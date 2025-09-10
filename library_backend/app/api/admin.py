@@ -9,7 +9,6 @@ from typing import Optional, List
 
 router = APIRouter(tags=["Admin"])
 
-# Admin creates a new user
 class CreateUserRequest(BaseModel):
     user_name: str
     user_email: EmailStr

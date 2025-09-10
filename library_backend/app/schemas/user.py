@@ -24,7 +24,7 @@ class UserOut(UserBase):
     #     orm_mode = True
 
     model_config = {
-        "from_attributes": True  # ✅ This allows from_orm()
+        "from_attributes": True  
     }
 
 

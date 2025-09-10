@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
@@ -7,14 +7,14 @@ from app.schemas.book import BookPublic, BookDetail, BookCreate, BookUpdate
 from app.dependencies import get_db
 #from app.core.security import get_current_user, get_current_admin
 from app.dependencies import get_current_user, get_current_admin
+from app.utils.minio_utils import upload_file
+
 
 
 router = APIRouter()
 
 
-# ----------------------
-# Public Endpoints
-# ----------------------
+
 
 @router.get("/", response_model=List[BookPublic], tags=["Public Books"])
 async def list_books(
@@ -28,17 +28,8 @@ async def list_books(
     return books
 
 
-@router.get("/{book_id}", response_model=BookDetail, tags=["Public Books"])
-async def book_details(book_id: int, db: AsyncSession = Depends(get_db)):
-    book = await BookCRUD.get_book(db, book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-    return book
 
 
-# ----------------------
-# Admin Endpoints
-# ----------------------
 
 @router.get("/all", response_model=List[BookDetail], tags=["Admin Books"], dependencies=[Depends(get_current_admin)])
 async def list_all_books(
@@ -51,10 +42,56 @@ async def list_all_books(
     return books
 
 
-@router.post("/all", response_model=BookDetail, status_code=201, tags=["Admin Books"], dependencies=[Depends(get_current_admin)])
-async def create_book(book_in: BookCreate, db: AsyncSession = Depends(get_db)):
+
+
+@router.post(
+    "/all", 
+    response_model=BookDetail, 
+    status_code=201, 
+    tags=["Admin Books"], 
+    dependencies=[Depends(get_current_admin)]
+)
+async def create_book(
+    book_title: str = Form(...),
+    book_author: str = Form(...),
+    book_category_id: int = Form(...),
+    book_rating: float = Form(0.0),
+    book_details: Optional[str] = Form(None),
+    book_availability: bool = Form(True),
+    book_count: int = Form(1),
+    book_photo: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    photo_url = upload_file(book_photo, folder="books")
+
+    book_in = {
+        "book_title": book_title,
+        "book_author": book_author,
+        "book_category_id": book_category_id,
+        "book_rating": book_rating,
+        "book_details": book_details,
+        "book_availability": book_availability,
+        "book_count": book_count,
+        "book_photo": photo_url,
+    }
+
     book = await BookCRUD.create_book(db, book_in)
+    print(book)
     return book
+
+
+
+
+
+
+@router.get("/{book_id}", response_model=BookDetail, tags=["Public Books"])
+async def book_details(book_id: int, db: AsyncSession = Depends(get_db)):
+    book = await BookCRUD.get_book(db, book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return book
+
+
 
 
 @router.patch("/{book_id}", response_model=BookDetail, tags=["Admin Books"], dependencies=[Depends(get_current_admin)])

@@ -11,7 +11,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class UserCRUD:
 
+    
+    @staticmethod
+    async def get(db: AsyncSession, user_id: int):
+        return await db.get(User, user_id)
 
+        
     @staticmethod
     async def get_user_by_name(db, user_name: str):
         result = await db.execute(select(User).where(User.user_name == user_name))

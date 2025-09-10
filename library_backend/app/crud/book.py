@@ -1,3 +1,4 @@
+from operator import or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import update, delete
@@ -5,6 +6,11 @@ from app.models.book import Book
 from app.models.category import Category
 from app.schemas.book import BookCreate, BookUpdate
 from fastapi import HTTPException, status
+from typing import Optional
+from sqlalchemy import or_
+
+
+
 
 class BookCRUD:
 
@@ -12,19 +18,45 @@ class BookCRUD:
     async def get_book(db: AsyncSession, book_id: int):
         result = await db.execute(select(Book).where(Book.book_id == book_id))
         return result.scalar_one_or_none()
-
     @staticmethod
-    async def get_books(db: AsyncSession, skip: int = 0, limit: int = 20):
-        result = await db.execute(select(Book).offset(skip).limit(limit))
+    async def get_books(db: AsyncSession, skip: int = 0, limit: int = 20, search: Optional[str] = None):
+        """
+        Return books with optional search. Searches title, author and details (case-insensitive).
+        """
+        stmt = select(Book)
+
+        # normalize search: None if empty/only-spaces
+        if search is not None:
+            search = search.strip()
+            if search == "":
+                search = None
+
+        if search:
+            pattern = f"%{search}%"
+            stmt = stmt.where(
+                or_(
+                    Book.book_title.ilike(pattern),
+                    Book.book_author.ilike(pattern),
+                    Book.book_details.ilike(pattern)   
+                )
+            )
+
+        stmt = stmt.offset(skip).limit(limit)
+        result = await db.execute(stmt)
         return result.scalars().all()
 
+   
+
     @staticmethod
-    async def create_book(db: AsyncSession, book: BookCreate):
+    async def create_book(db: AsyncSession, book_data: dict):
         # Ensure category exists
-        category = await db.get(Category, book.book_category_id)
+        category = await db.get(Category, book_data["book_category_id"])
+        print("*******************************")
+        print(category)
         if not category:
             raise HTTPException(status_code=404, detail="Category not found")
-        db_book = Book(**book.dict())
+
+        db_book = Book(**book_data)
         db.add(db_book)
         await db.commit()
         await db.refresh(db_book)
@@ -44,7 +76,6 @@ class BookCRUD:
 
     @staticmethod
     async def delete_book(db: AsyncSession, db_book: Book):
-        # Optionally, check if the book is borrowed
         await db.delete(db_book)
         await db.commit()
         return True

@@ -6,41 +6,17 @@ class CategoryBase(BaseModel):
     name: str
     description: Optional[str] = None
 
-class CategoryCreate(CategoryBase):
-    pass
+class CategoryCreate(BaseModel):
+    category_title: str
 
 class CategoryUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    category_title: str | None = None
 
-class CategoryOut(CategoryBase):
-    id: int
+
+class CategoryOut(BaseModel):
+    category_id: int
+    category_title: str
 
     class Config:
         orm_mode = True
-
-
-
-
-
-# from pydantic import BaseModel, Field
-# from typing import Optional
-
-
-# class CategoryBase(BaseModel):
-#     category_title: str
-
-
-# class CategoryCreate(CategoryBase):
-#     pass
-
-
-# class CategoryUpdate(BaseModel):
-#     category_title: Optional[str]
-
-
-# class Category(CategoryBase):
-#     category_id: int
-
-#     class Config:
-#         orm_mode = True
+        from_attributes = True 

@@ -6,7 +6,6 @@ from app.schemas.user import UserOut, UserList
 
 router = APIRouter(tags=["Users"])
 
-# Get all users (Admin only)
 @router.get("/", response_model=UserList)
 async def get_users(skip: int = 0, limit: int = 20, db: AsyncSession = Depends(get_db)):
     users = await UserCRUD.get_all_users(db, skip=skip, limit=limit)
@@ -15,7 +14,6 @@ async def get_users(skip: int = 0, limit: int = 20, db: AsyncSession = Depends(g
         meta={"total": len(users), "skip": skip, "limit": limit}
     )
 
-# Get single user by ID (Admin only)
 @router.get("/{user_id}", response_model=UserOut)
 async def get_user(user_id: str, db: AsyncSession = Depends(get_db)):
     user = await UserCRUD.get_user_by_id(db, user_id)
@@ -23,7 +21,6 @@ async def get_user(user_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
     return UserOut.from_orm(user)
 
-# Update user (Admin only)
 @router.patch("/{user_id}", response_model=UserOut)
 async def update_user(user_id: str, user_update: dict, db: AsyncSession = Depends(get_db)):
     user = await UserCRUD.get_user_by_id(db, user_id)
@@ -32,7 +29,6 @@ async def update_user(user_id: str, user_update: dict, db: AsyncSession = Depend
     updated_user = await UserCRUD.update_user(db, user, user_update)
     return UserOut.from_orm(updated_user)
 
-# Delete user (Admin only)
 @router.delete("/{user_id}", status_code=204)
 async def delete_user(user_id: str, db: AsyncSession = Depends(get_db)):
     user = await UserCRUD.get_user_by_id(db, user_id)

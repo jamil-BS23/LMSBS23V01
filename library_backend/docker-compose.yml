@@ -1,0 +1,113 @@
+
+
+version: "3.9"
+
+services:
+  fastapi:
+    build: .
+    container_name: fastapi_app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@db:5432/library_db
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ROOT_USER=jamil
+      - MINIO_ROOT_PASSWORD=1234
+      - MINIO_BUCKET=media
+    depends_on:
+      - db
+      - minio
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=library_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: quay.io/minio/minio
+    container_name: minio_server
+    command: server /data --console-address ":9001"
+    restart: always
+    environment:
+      - MINIO_ROOT_USER=jamil
+      - MINIO_ROOT_PASSWORD=1234
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    volumes:
+      - minio_data:/data
+
+volumes:
+  postgres_data:
+  minio_data:
+
+
+
+
+
+
+# version: "3.9"
+
+# services:
+#   db:
+#     image: postgres:15
+#     container_name: lms_db
+#     restart: always
+#     environment:
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: postgres123
+#       POSTGRES_DB: lmsdb
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data   # named volume
+
+#   minio:
+#     image: minio/minio
+#     container_name: lms_minio
+#     restart: always
+#     ports:
+#       - "9000:9000"
+#       - "9001:9001"
+#     environment:
+#       MINIO_ROOT_USER: minioadmin
+#       MINIO_ROOT_PASSWORD: minioadmin
+#     volumes:
+#       - minio_data:/data   # named volume
+#     command: server /data --console-address ":9001"
+
+#   api:
+#     build: .
+#     container_name: lms_api
+#     restart: always
+#     ports:
+#       - "8000:8000"
+#     environment:
+#       DATABASE_URL: "postgresql+asyncpg://postgres:postgres123@db:5432/lmsdb"
+#       MINIO_ENDPOINT: "minio:9000"
+#       MINIO_ACCESS_KEY: "minioadmin"
+#       MINIO_SECRET_KEY: "minioadmin"
+#       MINIO_BUCKET: "media"
+#     depends_on:
+#       - db
+#       - minio
+#     volumes:
+#       - .:/app
+
+# # ----------------------
+# # Declare named volumes
+# # ----------------------
+# volumes:
+#   postgres_data:
+#   minio_data:

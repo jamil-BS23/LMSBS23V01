@@ -2,8 +2,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.settings import Settings
 from app.schemas.settings import SettingsUpdate
 from fastapi import HTTPException, status
+from sqlalchemy import select
+
 
 class SettingsCRUD:
+
+
+
+    @staticmethod
+    async def get_borrow_day_limit(db: AsyncSession):
+        result = await db.execute(select(Settings.borrow_day_limit))
+        return result.scalar_one_or_none()
 
     @staticmethod
     async def get_settings(db: AsyncSession):

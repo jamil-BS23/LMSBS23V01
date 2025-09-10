@@ -7,10 +7,9 @@ BORROW_STATUS = {"borrowed", "returned", "overdue"}
 REQUEST_STATUS = {"accept", "pending", "reject"}
 
 
-# Borrow record for responses
 class BorrowRecord(BaseModel):
     borrow_id: int
-    user_id: int
+    user_id: str
     user_name: Optional[str]
     book_id: int
     book_title: Optional[str]
@@ -23,21 +22,20 @@ class BorrowRecord(BaseModel):
         orm_mode = True
 
 
-# Borrow create schema (for user requests)
 class BorrowCreate(BaseModel):
-    user_id: int
-    borrow_date: date
-    return_date: date
+    # user_name: str
+    # borrow_date: date
+    # return_date: date
+    book_id: int
 
-    @validator("return_date")
-    def check_date_range(cls, v, values):
-        borrow_date = values.get("borrow_date")
-        if borrow_date and v < borrow_date:
-            raise ValueError("return_date cannot be before borrow_date")
-        return v
+    # @validator("return_date")
+    # def check_date_range(cls, v, values):
+    #     borrow_date = values.get("borrow_date")
+    #     if borrow_date and v < borrow_date:
+    #         raise ValueError("return_date cannot be before borrow_date")
+    #     return v
 
 
-# Borrow status update schema (admin)
 class BorrowStatusUpdate(BaseModel):
     borrow_status: Optional[str] = None  # borrowed / returned / overdue
     request_status: Optional[str] = None  # accept / pending / reject
@@ -55,12 +53,28 @@ class BorrowStatusUpdate(BaseModel):
         return v
 
 
-# Schema for list response wrapper with pagination meta
 class BorrowListResponse(BaseModel):
     data: List[BorrowRecord]
     meta: dict = Field(..., example={"total": 100, "page": 1, "page_size": 20})
 
 
-# Schema for returning only counts
 class BorrowCountResponse(BaseModel):
     count: int
+
+
+
+
+class BorrowDetailResponse(BaseModel):
+
+    borrow_id: int
+    user_id: str
+    user_name: Optional[str]=None
+    book_id: int
+    book_title: Optional[str]=None
+    borrow_date: date
+    return_date: date
+    borrow_status: str
+    request_status: str
+
+    class Config:
+        orm_mode = True

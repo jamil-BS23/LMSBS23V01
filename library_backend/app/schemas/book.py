@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional
 
 
-# Public Book model (for home page)
 class BookPublic(BaseModel):
     book_id: int
     book_title: str
@@ -14,13 +13,11 @@ class BookPublic(BaseModel):
         allow_population_by_field_name = True
 
 
-# Full Book model (admin / detail)
 class BookDetail(BaseModel):
     book_id: int
     book_title: str
     book_author: str
     book_category_id: int
-    category_title: Optional[str]
     book_rating: float
     book_photo: Optional[HttpUrl]
     book_details: Optional[str]
@@ -32,7 +29,6 @@ class BookDetail(BaseModel):
         allow_population_by_field_name = True
 
 
-# Book creation schema
 class BookCreate(BaseModel):
     book_title: str
     book_author: str
@@ -44,7 +40,6 @@ class BookCreate(BaseModel):
     book_count: int = 1
 
 
-# Book update schema (partial)
 class BookUpdate(BaseModel):
     book_title: Optional[str]
     book_author: Optional[str]

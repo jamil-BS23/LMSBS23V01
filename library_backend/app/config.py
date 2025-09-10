@@ -11,10 +11,14 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str
     JWT_EXPIRATION_MINUTES: int = 60  
 
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str
+    MINIO_SECRET_KEY: str
+    MINIO_BUCKET: str = "media"
+
 
     class Config:
         env_file = ".env"
-        # Allow extra fields from .env without error
         extra = "allow"
 
 # Initialize settings

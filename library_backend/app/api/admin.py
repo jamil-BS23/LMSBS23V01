@@ -21,7 +21,7 @@ class CreateUserResponse(BaseModel):
     user_email: EmailStr
     role: str
 
-@router.post("/create-user", response_model=CreateUserResponse)
+@router.post("/createuser", response_model=CreateUserResponse)
 async def create_user(payload: CreateUserRequest, db: AsyncSession = Depends(get_db)):
     existing_user = await UserCRUD.get_user_by_id(db, payload.user_name)
     if existing_user:
@@ -37,3 +37,7 @@ async def create_user(payload: CreateUserRequest, db: AsyncSession = Depends(get
         user_email=user.user_email,
         role=user.role
     )
+
+
+
+

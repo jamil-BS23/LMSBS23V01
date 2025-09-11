@@ -31,3 +31,6 @@ class UserOut(UserBase):
 class UserList(BaseModel):
     data: list[UserOut]
     meta: dict
+
+
+

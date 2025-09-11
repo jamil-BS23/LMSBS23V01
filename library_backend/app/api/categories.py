@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from app.dependencies import get_db, get_current_admin
+from app.dependencies import get_db, get_current_admin, get_current_user
 from app.schemas.category import CategoryOut, CategoryUpdate, CategoryCreate
 from app.crud.category import CategoryCRUD
 from app.models.user import User
@@ -18,7 +18,7 @@ router = APIRouter(
 @router.get("/all", response_model=List[CategoryOut])
 async def list_categories(
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_user),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100)
 ):

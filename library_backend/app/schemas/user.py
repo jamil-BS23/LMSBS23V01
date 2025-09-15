@@ -5,7 +5,7 @@ from typing import Optional
 class UserBase(BaseModel):
     user_name: str = Field(..., max_length=100)
     user_email: EmailStr
-    user_photo: Optional[str]
+    user_photo: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str

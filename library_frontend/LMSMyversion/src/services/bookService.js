@@ -7,6 +7,12 @@ export const bookService = {
     return response.data;
   },
 
+  // Admin: Get all books (requires admin token)
+  async getAllAdminBooks(params = {}) {
+    const response = await api.get('/books/all', { params });
+    return response.data;
+  },
+
   // Get single book by ID
   async getBook(id) {
     const response = await api.get(`/books/${id}`);
@@ -16,6 +22,14 @@ export const bookService = {
   // Create new book
   async createBook(bookData) {
     const response = await api.post('/books', bookData);
+    return response.data;
+  },
+
+  // Admin: Create new book (multipart form)
+  async createBookAdmin(formData) {
+    const response = await api.post('/books/all', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 

@@ -1,4 +1,7 @@
 // src/pages/ManageBooks/ManageBooks.jsx
+
+
+
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Layers,
@@ -14,12 +17,35 @@ import {
   Filter as FilterIcon,
 } from "lucide-react";
 
+import axios from "axios";
+
 import sectionedBooks from "../../data/sampleBooks";
 import Sidebar from "../../components/DashboardSidebar/DashboardSidebar";
 import Pagination from "../../components/Pagination/Pagination";
+import { bookService } from "../../services/bookService";
+
 
 const PLACEHOLDER_IMG = "https://dummyimage.com/80x80/e5e7eb/9ca3af&text=📘";
 const PAGE_SIZE = 6; // paginate after 6 books
+
+
+const handleCreateBook = async (formData) => {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/books/all`, {
+      method: "POST",
+      body: formData, // FormData must include all backend fields
+    });
+    if (!res.ok) throw new Error("Failed to create book");
+    const newBook = await res.json();
+    setBooks((prev) => [...prev, newBook]);
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
+
+
+
 
 // ---------- helpers ----------
 function toYMD(dateStr) {
@@ -34,7 +60,7 @@ function toYMD(dateStr) {
 
 function normalizeFromSection(item) {
   return {
-    id: String(item.id ?? crypto.randomUUID()),
+    id: `sec_${String(item.id ?? crypto.randomUUID())}`,
     title: item.title ?? "—",
     author: item.author ?? item.authors ?? "—",
     category: item.category ?? "—",
@@ -49,7 +75,7 @@ function normalizeFromSection(item) {
 
 function normalizeFromJson(item) {
   return {
-    id: String(item.id ?? crypto.randomUUID()),
+    id: `json_${String(item.id ?? crypto.randomUUID())}`,
     title: item.title ?? "—",
     author: item.authors ?? item.author ?? "—",
     category: item.category ?? "—",
@@ -132,18 +158,58 @@ function FilterBarBooks({
 }
 
 export default function ManageBooks() {
+
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   useEffect(() => {
     document.title = "Manage Books";
   }, []);
 
-  // --------- load books.json from PUBLIC ----------
+  // --------- load from backend admin "/books/all" first; fallback to public json ----------
   const [booksJson, setBooksJson] = useState([]);
   useEffect(() => {
-    const url = `${import.meta.env.BASE_URL}books.json`;
-    fetch(url)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => setBooksJson(Array.isArray(data) ? data : []))
-      .catch(() => setBooksJson([]));
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError("");
+      try {
+        const adminBooks = await bookService.getAllAdminBooks({ page: 1, page_size: 100 });
+        if (cancelled) return;
+        // Map API BookDetail -> our normalized format via a small adapter
+        const mapped = (Array.isArray(adminBooks) ? adminBooks : []).map((b) => ({
+          id: `api_${b.book_id}`,
+          title: b.book_title,
+          author: b.book_author,
+          category: String(b.book_category_id),
+          copies: b.book_count,
+          updatedOn: toYMD(new Date().toISOString()),
+          cover: b.book_photo,
+          pdf: "",
+          audio: "",
+          description: b.book_details,
+        }));
+        setBooksJson(mapped);
+      } catch (e) {
+        // Fallback to static public/books.json to keep UI usable
+        const url = `${import.meta.env.BASE_URL}books.json`;
+        try {
+          const r = await fetch(url);
+          const data = r.ok ? await r.json() : [];
+          if (!cancelled) setBooksJson(Array.isArray(data) ? data : []);
+        } catch {
+          if (!cancelled) setBooksJson([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // build table data (normalized)
@@ -316,6 +382,16 @@ export default function ManageBooks() {
     if (!file) return;
 
     if (kind === "image") {
+      const isValidType = /\.(png|jpg|jpeg)$/i.test(file.name) && file.type.startsWith("image/");
+      const isValidSize = file.size <= 1 * 1024 * 1024; // 1MB
+      if (!isValidType) {
+        alert("Only .png, .jpg, .jpeg files are allowed");
+        return;
+      }
+      if (!isValidSize) {
+        alert("File size exceeds 1 MB");
+        return;
+      }
       setForm((f) => ({ ...f, imageLoading: true }));
       const url = URL.createObjectURL(file);
       setTimeout(() => {
@@ -362,6 +438,21 @@ export default function ManageBooks() {
       alert("Please enter a book name.");
       return;
     }
+    if (mode === "create") {
+      if (!form.author) {
+        alert("Please enter an author.");
+        return;
+      }
+      const parsedCategory = parseInt(form.category, 10);
+      if (!Number.isFinite(parsedCategory)) {
+        alert("Please enter a numeric Category ID (e.g., 1).");
+        return;
+      }
+      if (!form.coverFile) {
+        alert("Please select a cover image file.");
+        return;
+      }
+    }
     setSaving(true);
 
     if (mode === "edit" && editingIndex >= 0) {
@@ -381,19 +472,62 @@ export default function ManageBooks() {
         return next;
       });
     } else {
-      const newRow = {
-        id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        title: form.title || "—",
-        author: form.author || "—",
-        category: form.category || "—",
-        copies: form.copies || "—",
-        updatedOn: toYMD(new Date().toISOString()),
-        cover: form.coverUrl || PLACEHOLDER_IMG,
-        pdf: form.pdfUrl || "",
-        audio: form.audioUrl || "",
-        description: form.description || "",
-      };
-      setDisplayed((prev) => [newRow, ...prev]);
+      // Try to create via backend admin API if we have required fields
+      try {
+        const fd = new FormData();
+        fd.append("book_title", form.title);
+        fd.append("book_author", form.author || "");
+        // Backend expects numeric category id; try to parse, fallback to 1
+        const categoryId = parseInt(form.category, 10);
+        fd.append("book_category_id", Number.isFinite(categoryId) ? String(categoryId) : "1");
+        fd.append("book_rating", "0");
+        fd.append("book_details", form.description || "");
+        fd.append("book_availability", "true");
+        fd.append("book_count", form.copies ? String(form.copies) : "1");
+        if (form.coverFile) {
+          fd.append("book_photo", form.coverFile);
+        }
+
+        const created = await bookService.createBookAdmin(fd);
+        // Map API book detail to table row
+        const apiRow = {
+          id: `api_${created.book_id}`,
+          title: created.book_title || "—",
+          author: created.book_author || "—",
+          category: String(created.book_category_id ?? "—"),
+          copies: created.book_count ?? "—",
+          updatedOn: toYMD(new Date().toISOString()),
+          cover: created.book_photo || PLACEHOLDER_IMG,
+          pdf: "",
+          audio: "",
+          description: created.book_details || "",
+        };
+        setDisplayed((prev) => [apiRow, ...prev]);
+      } catch (err) {
+        // Fallback to local add if backend rejects, but inform user
+        console.error(err);
+        const detail = err?.response?.data?.detail;
+        const serverMessage = Array.isArray(detail)
+          ? detail.map((d) => `${d.loc?.join('.')}: ${d.msg}`).join("\n")
+          : detail || err?.message || "Failed to create on server";
+        alert(`${serverMessage}`);
+        const newRow = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          title: form.title || "—",
+          author: form.author || "—",
+          category: form.category || "—",
+          copies: form.copies || "—",
+          updatedOn: toYMD(new Date().toISOString()),
+          cover: form.coverUrl || PLACEHOLDER_IMG,
+          pdf: form.pdfUrl || "",
+          audio: form.audioUrl || "",
+          description: form.description || "",
+        };
+        // Only add locally if no server validation errors in required fields
+        if (!detail) {
+          setDisplayed((prev) => [newRow, ...prev]);
+        }
+      }
     }
 
     setSaving(false);
@@ -460,7 +594,7 @@ export default function ManageBooks() {
 
           <div className="px-4 pb-4">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
+              <table className="min-w-full bg-white text-black">
                 <thead className="bg-gray-50">
                   <tr className="text-left">
                     <th className="py-3 px-4">Book</th>
@@ -470,56 +604,60 @@ export default function ManageBooks() {
                     <th className="py-3 px-4">Action</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {pageRows.map((b) => (
-                    <tr
-                      key={b.id}
-                      className="border-t last:border-b-0 odd:bg-gray-50 even:bg-white"
-                    >
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={b.cover || PLACEHOLDER_IMG}
-                            alt={b.title}
-                            className="h-10 w-10 rounded object-cover bg-gray-100 flex-shrink-0"
-                          />
-                          <p className="font-semibold text-gray-800 truncate">
-                            {b.title}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-700">{b.author}</td>
-                      <td className="py-3 px-4 text-gray-700">{b.category}</td>
-                      <td className="py-3 px-4 text-gray-700">{b.copies ?? "—"}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => onOpenEdit(b)}
-                            className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
-                          >
-                            <Pencil size={14} /> Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => requestDelete(b.id)}
-                            className="inline-flex items-center gap-1 rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
-                          >
-                            <Trash2 size={14} /> Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
 
-                  {pageRows.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-6 px-4 text-center text-gray-500">
-                        No books found with current filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
+
+    
+                 <tbody>
+  {pageRows.map((b) => (
+    <tr key={b.id} className="border-t last:border-b-0 odd:bg-gray-50 even:bg-white">
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-3">
+          <img
+            src={b.cover || PLACEHOLDER_IMG}
+            alt={b.title}
+            className="h-10 w-10 rounded object-cover bg-gray-100 flex-shrink-0"
+          />
+          <p className="font-semibold text-gray-800 truncate">
+            {b.title}
+          </p>
+        </div>
+      </td>
+
+      <td className="py-3 px-4 text-gray-700">{b.author}</td>
+      <td className="py-3 px-4 text-gray-700">{b.category}</td>
+      <td className="py-3 px-4 text-gray-700">{b.copies ?? "—"}</td>
+
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onOpenEdit(b)}
+            className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+          >
+            <Pencil size={14} /> Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => requestDelete(b.id)}
+            className="inline-flex items-center gap-1 rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        </div>
+      </td>
+    </tr>
+  ))}
+
+  {pageRows.length === 0 && (
+    <tr>
+      <td colSpan={5} className="py-6 px-4 text-center text-gray-500">
+        No books found.
+      </td>
+    </tr>
+  )}
+</tbody> 
+
+
               </table>
             </div>
 

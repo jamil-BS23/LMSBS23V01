@@ -4,13 +4,12 @@ export const authService = {
   // Login
   async login(credentials) {
     const response = await api.post('/auth/login', credentials);
-    const { access_token, user } = response.data;
-    
-    // Store token and user info
+    const { access_token } = response.data;
+
+    // Store token
     localStorage.setItem('access_token', access_token);
-    localStorage.setItem('user', JSON.stringify(user));
-    
-    return response.data;
+
+    return { access_token };
   },
 
   // Register
@@ -22,17 +21,12 @@ export const authService = {
   // Logout
   logout() {
     localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
   },
 
   // Get current user
   getCurrentUser() {
-    try {
-      const user = localStorage.getItem('user');
-      return user ? JSON.parse(user) : null;
-    } catch {
-      return null;
-    }
+    // Not returned by backend on login; could decode JWT here if needed
+    return null;
   },
 
   // Check if user is authenticated

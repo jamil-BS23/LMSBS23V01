@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import UserSidebar from "../../components/UserSidebar/UserSidebar";
 import { Upload, User2, CheckCircle2, Search } from "lucide-react";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
 export default function UserSettings() {
   useEffect(() => {
@@ -13,6 +15,11 @@ export default function UserSettings() {
   const [email, setEmail] = useState("");
   const [notify, setNotify] = useState(true);
   const [lang, setLang] = useState("en");
+  const [password, setPassword] = useState("");
+
+  const [role, setRole] = useState("user");
+
+
 
   // Upload preview (working copy) and committed avatar for header
   const [photo, setPhoto] = useState(null);      // file
@@ -57,10 +64,40 @@ export default function UserSettings() {
     onFile(file);
   };
 
-  const onSave = () => {
-    // Show confirmation popup. We don't commit avatar yet.
-    setSavePopup(true);
+
+  const onSave = async () => {
+    try {
+      const payload = {
+        user_name: name,
+        user_email: email,
+        password: password,
+        role: role,
+        user_photo: null,
+      };
+
+      const res = await fetch(`${API_BASE_URL}/admin/createuser`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+  
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`Error: ${err.detail}`);
+        return;
+      }
+  
+      const data = await res.json();
+      console.log("User created:", data);
+  
+      // Show success popup
+      setSavePopup(true);
+    } catch (err) {
+      console.error("Request failed:", err);
+      alert("Something went wrong");
+    }
   };
+  
 
   // When user clicks Done in popup: commit avatar to header
   const onPopupDone = () => {
@@ -140,6 +177,39 @@ export default function UserSettings() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
               />
             </div>
+
+            <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  />
+            </div>
+
+
+
+            <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Role
+    </label>
+    <select
+      value={role}
+      onChange={(e) => setRole(e.target.value)}
+      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400 text-black"
+    >
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+    </select>
+  </div>
+
+
+
+
           </div>
 
           {/* Photo uploader */}

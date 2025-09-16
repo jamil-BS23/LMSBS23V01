@@ -1,5 +1,6 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Backend mounts routers at root (e.g., "/auth"), so no "/api" suffix
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Create axios instance with default config
 import axios from 'axios';

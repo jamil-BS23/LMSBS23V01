@@ -18,6 +18,9 @@ class BookCRUD:
     async def get_book(db: AsyncSession, book_id: int):
         result = await db.execute(select(Book).where(Book.book_id == book_id))
         return result.scalar_one_or_none()
+
+
+        
     @staticmethod
     async def get_books(db: AsyncSession, skip: int = 0, limit: int = 20, search: Optional[str] = None):
         """

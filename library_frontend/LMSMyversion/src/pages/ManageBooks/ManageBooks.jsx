@@ -17,17 +17,26 @@ import {
   Filter as FilterIcon,
 } from "lucide-react";
 
-import axios from "axios";
 
 import sectionedBooks from "../../data/sampleBooks";
 import Sidebar from "../../components/DashboardSidebar/DashboardSidebar";
 import Pagination from "../../components/Pagination/Pagination";
 import { bookService } from "../../services/bookService";
+import api from "../../config/api";
 
 
 const PLACEHOLDER_IMG = "https://dummyimage.com/80x80/e5e7eb/9ca3af&text=📘";
 const PAGE_SIZE = 6; // paginate after 6 books
 
+
+function normalizeCoverUrl(url) {
+  if (!url) return PLACEHOLDER_IMG;
+  const publicMinio = import.meta.env.VITE_MINIO_PUBLIC_ENDPOINT || "";
+  if (!publicMinio) return url;
+  return url
+    .replace("localhost:9000", publicMinio)
+    .replace("127.0.0.1:9000", publicMinio);
+}
 
 const handleCreateBook = async (formData) => {
   try {
@@ -37,7 +46,7 @@ const handleCreateBook = async (formData) => {
     });
     if (!res.ok) throw new Error("Failed to create book");
     const newBook = await res.json();
-    setBooks((prev) => [...prev, newBook]);
+    setDisplayed((prev) => [...prev, newBook]);
   } catch (err) {
     alert(err.message);
   }
@@ -64,9 +73,9 @@ function normalizeFromSection(item) {
     title: item.title ?? "—",
     author: item.author ?? item.authors ?? "—",
     category: item.category ?? "—",
-    copies: "—",
+    copies: item.copies || "—",
     updatedOn: toYMD(item.publishDate ?? item.stockDate ?? ""),
-    cover: item.image ?? item.coverImage ?? PLACEHOLDER_IMG,
+    cover: item.image ?? item.book_photo ?? PLACEHOLDER_IMG,
     pdf: item.pdf ?? "",
     audio: item.audio ?? "",
     description: item.summary ?? "",
@@ -79,9 +88,11 @@ function normalizeFromJson(item) {
     title: item.title ?? "—",
     author: item.authors ?? item.author ?? "—",
     category: item.category ?? "—",
-    copies: "—",
+    // copies: "—",
+    copies: item.copies || "—",
     updatedOn: toYMD(item.publishDate ?? ""),
-    cover: item.coverImage ?? PLACEHOLDER_IMG,
+    cover: item.book_photo ?? PLACEHOLDER_IMG,
+
     pdf: item.pdf ?? "",
     audio: item.audio ?? "",
     description: item.summary ?? "",
@@ -166,8 +177,10 @@ export default function ManageBooks() {
     document.title = "Manage Books";
   }, []);
 
-  // --------- load from backend admin "/books/all" first; fallback to public json ----------
+  // --------- load categories (for title lookup) and then admin books; fallback to public json ----------
   const [booksJson, setBooksJson] = useState([]);
+  const [categories, setCategories] = useState([]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -175,21 +188,36 @@ export default function ManageBooks() {
       setLoading(true);
       setError("");
       try {
+        // 1) Load categories to map ID -> title
+        try {
+          // Backend mounts categories router with an extra prefix, so full path is /categories/books/category/all
+          const catRes = await api.get("/categories/books/category/all");
+          if (!cancelled) setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+        } catch {
+          if (!cancelled) setCategories([]);
+        }
+
+        // 2) Load admin books
         const adminBooks = await bookService.getAllAdminBooks({ page: 1, page_size: 100 });
         if (cancelled) return;
-        // Map API BookDetail -> our normalized format via a small adapter
+        const idToTitle = new Map(
+          (Array.isArray(categories) ? categories : []).map((c) => [c.category_id || c.id, c.category_title || c.title])
+        );
         const mapped = (Array.isArray(adminBooks) ? adminBooks : []).map((b) => ({
           id: `api_${b.book_id}`,
           title: b.book_title,
           author: b.book_author,
-          category: String(b.book_category_id),
-          copies: b.book_count,
+          category: idToTitle.get(b.book_category_id) || String(b.book_category_id),
+          copies: Number.isFinite(b.book_count) ? b.book_count : 0,
           updatedOn: toYMD(new Date().toISOString()),
-          cover: b.book_photo,
+          cover: normalizeCoverUrl(b.book_photo),
+
           pdf: "",
           audio: "",
           description: b.book_details,
         }));
+
+        
         setBooksJson(mapped);
       } catch (e) {
         // Fallback to static public/books.json to keep UI usable
@@ -456,21 +484,78 @@ export default function ManageBooks() {
     setSaving(true);
 
     if (mode === "edit" && editingIndex >= 0) {
-      setDisplayed((prev) => {
-        const next = [...prev];
-        const row = { ...next[editingIndex] };
-        row.title = form.title || "—";
-        row.author = form.author || "—";
-        row.category = form.category || "—";
-        row.copies = form.copies || "—";
-        row.cover = form.coverUrl || row.cover || PLACEHOLDER_IMG;
-        row.pdf = form.pdfUrl || row.pdf || "";
-        row.audio = form.audioUrl || row.audio || "";
-        row.description = form.description || "";
-        row.updatedOn = toYMD(new Date().toISOString());
-        next[editingIndex] = row;
-        return next;
-      });
+      const currentRow = displayed[editingIndex];
+      // If this row comes from API (id like api_123), PATCH the backend
+      const apiMatch = String(currentRow.id || "").match(/^api_(\d+)$/);
+      if (apiMatch) {
+        try {
+          const bookId = Number(apiMatch[1]);
+          const payload = {};
+          if (form.title) payload.book_title = form.title;
+          if (form.author) payload.book_author = form.author;
+          const parsedCategoryId = parseInt(form.category, 10);
+          if (Number.isFinite(parsedCategoryId)) payload.book_category_id = parsedCategoryId;
+          const parsedCount = parseInt(form.copies, 10);
+          if (Number.isFinite(parsedCount)) payload.book_count = parsedCount;
+          if (form.description) payload.book_details = form.description;
+
+          const updated = await bookService.updateBook(bookId, payload);
+
+          try {
+            // prepare payload matching your BookUpdate Pydantic model
+            const payload = {
+            book_title: form.title,
+            book_author: form.author,
+            book_category_id: parseInt(form.category, 10),
+            book_count: form.copies,
+            book_details: form.description || "",
+            };
+            
+            const originalId = String(displayed[editingIndex].id).replace(/^api_/, "");
+            
+            const updated = await bookService.updateBookAdmin(originalId, payload);
+            
+            setDisplayed((prev) => {
+            const next = [...prev];
+            next[editingIndex] = {
+            ...next[editingIndex],
+            title: updated.book_title,
+            author: updated.book_author,
+            category: String(updated.book_category_id),
+            copies: updated.book_count,
+            cover: updated.book_photo
+            ? normalizeCoverUrl(updated.book_photo)
+            : next[editingIndex].cover,
+            description: updated.book_details,
+            updatedOn: toYMD(new Date().toISOString()),
+            };
+            return next;
+            });
+            } catch (err) {
+            console.error("Update failed", err);
+            alert("Failed to update book. Please try again.");
+          }
+        } catch (e) {
+          alert(e?.response?.data?.detail || e.message || "Failed to update book");
+        }
+      } else {
+        // Local-only row: update locally
+        setDisplayed((prev) => {
+          const next = [...prev];
+          const row = { ...next[editingIndex] };
+          row.title = form.title || "—";
+          row.author = form.author || "—";
+          row.category = form.category || "—";
+          row.copies = form.copies || "—";
+          row.cover = form.coverUrl || row.cover || PLACEHOLDER_IMG;
+          row.pdf = form.pdfUrl || row.pdf || "";
+          row.audio = form.audioUrl || row.audio || "";
+          row.description = form.description || "";
+          row.updatedOn = toYMD(new Date().toISOString());
+          next[editingIndex] = row;
+          return next;
+        });
+      }
     } else {
       // Try to create via backend admin API if we have required fields
       try {
@@ -497,7 +582,7 @@ export default function ManageBooks() {
           category: String(created.book_category_id ?? "—"),
           copies: created.book_count ?? "—",
           updatedOn: toYMD(new Date().toISOString()),
-          cover: created.book_photo || PLACEHOLDER_IMG,
+          cover: normalizeCoverUrl(created.book_photo),
           pdf: "",
           audio: "",
           description: created.book_details || "",
@@ -616,6 +701,7 @@ export default function ManageBooks() {
             src={b.cover || PLACEHOLDER_IMG}
             alt={b.title}
             className="h-10 w-10 rounded object-cover bg-gray-100 flex-shrink-0"
+            onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}
           />
           <p className="font-semibold text-gray-800 truncate">
             {b.title}

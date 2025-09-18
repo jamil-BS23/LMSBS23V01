@@ -277,6 +277,7 @@ export default function ManageBooks() {
   // displayed list (allows local add/edit/delete)
   const [displayed, setDisplayed] = useState([]);
   useEffect(() => setDisplayed(baseBooks), [baseBooks]);
+  console.log("Displayed data", displayed)
 
   // --------- FILTER STATE ----------
   const [queryTitle, setQueryTitle] = useState("");
@@ -356,6 +357,7 @@ export default function ManageBooks() {
   const [form, setForm] = useState(emptyForm);
 
   const rowToForm = (row) => ({
+    id: row.book_id,
     title: row.title && row.title !== "—" ? row.title : "",
     author: row.author && row.author !== "—" ? row.author : "",
     category: row.category && row.category !== "—" ? row.category : "",
@@ -461,85 +463,87 @@ export default function ManageBooks() {
   // 2s "Saved" toast
   const [savedToast, setSavedToast] = useState(false);
 
-  const handleSave = async () => {
-    if (!form.title) {
-      alert("Please enter a book name.");
-      return;
-    }
-    if (mode === "create") {
-      if (!form.author) {
-        alert("Please enter an author.");
-        return;
-      }
-      const parsedCategory = parseInt(form.category, 10);
-      if (!Number.isFinite(parsedCategory)) {
-        alert("Please enter a numeric Category ID (e.g., 1).");
-        return;
-      }
-      if (!form.coverFile) {
-        alert("Please select a cover image file.");
-        return;
-      }
-    }
-    setSaving(true);
 
+  const handleSave = async () => {
+    setSaving(true);
     if (mode === "edit" && editingIndex >= 0) {
       const currentRow = displayed[editingIndex];
-      // If this row comes from API (id like api_123), PATCH the backend
-      const apiMatch = String(currentRow.id || "").match(/^api_(\d+)$/);
-      if (apiMatch) {
+    
+      // Use numeric ID directly\
+      console.log("current Row", currentRow)
+      const originalId = currentRow.book_id || currentRow.id; // whichever exists
+      console.log("Updating book ID:", originalId);
+    
+      if (originalId) {
         try {
-          const bookId = Number(apiMatch[1]);
+          // const payload = {
+          //   book_title: form.title,
+          //   book_author: form.author,
+          //   book_category_id: parseInt(form.category, 10),
+          //   book_count: parseInt(form.copies, 10),
+          //   book_details: form.description || "",
+          // };
+
+
+          // const payload = {
+          //   book_title: form.title || "",
+          //   book_author: form.author || "",
+          //   book_category_id: parseInt(form.category, 10) || 1,
+          //   book_rating: form.rating || 0,
+          //   book_photo: form.coverUrl,           // always sent
+          //   book_details: form.description,      // always sent
+          //   book_availability: true,
+          //   book_count: parseInt(form.copies, 10) || 1
+          // };
+
           const payload = {};
           if (form.title) payload.book_title = form.title;
           if (form.author) payload.book_author = form.author;
-          const parsedCategoryId = parseInt(form.category, 10);
-          if (Number.isFinite(parsedCategoryId)) payload.book_category_id = parsedCategoryId;
-          const parsedCount = parseInt(form.copies, 10);
-          if (Number.isFinite(parsedCount)) payload.book_count = parsedCount;
-          if (form.description) payload.book_details = form.description;
+          if (form.category) payload.book_category_id = parseInt(form.category, 10);
+          if (form.rating !== undefined && form.rating !== null) payload.book_rating = form.rating;
+          if (form.coverFile || form.coverUrl) {
+            // Only send book_photo if user selected a new file or URL
+            payload.book_photo = form.coverFile;
+          }
+          if (form.description) payload.book_details = form.description; 
+          if (form.copies) payload.book_count = parseInt(form.copies, 10);
+          payload.book_availability = true;
+          
 
-          const updated = await bookService.updateBook(bookId, payload);
+          
 
-          try {
-            // prepare payload matching your BookUpdate Pydantic model
-            const payload = {
-            book_title: form.title,
-            book_author: form.author,
-            book_category_id: parseInt(form.category, 10),
-            book_count: form.copies,
-            book_details: form.description || "",
-            };
-            
-            const originalId = String(displayed[editingIndex].id).replace(/^api_/, "");
-            
-            const updated = await bookService.updateBookAdmin(originalId, payload);
-            
-            setDisplayed((prev) => {
+          
+
+          
+          console.log("original id", originalId)
+          const updated = await bookService.updateBookAdmin(originalId, payload);
+    
+          // Update the row in the table
+          setDisplayed((prev) => {
             const next = [...prev];
             next[editingIndex] = {
-            ...next[editingIndex],
-            title: updated.book_title,
-            author: updated.book_author,
-            category: String(updated.book_category_id),
-            copies: updated.book_count,
-            cover: updated.book_photo
-            ? normalizeCoverUrl(updated.book_photo)
-            : next[editingIndex].cover,
-            description: updated.book_details,
-            updatedOn: toYMD(new Date().toISOString()),
+              ...next[editingIndex],
+              title: updated.book_title,
+              author: updated.book_author,
+              category: String(updated.book_category_id),
+              copies: updated.book_count,
+              cover: updated.book_photo
+                ? normalizeCoverUrl(updated.book_photo)
+                : next[editingIndex].cover,
+              description: updated.book_details,
+              updatedOn: toYMD(new Date().toISOString()),
             };
             return next;
-            });
-            } catch (err) {
-            console.error("Update failed", err);
-            alert("Failed to update book. Please try again.");
-          }
-        } catch (e) {
-          alert(e?.response?.data?.detail || e.message || "Failed to update book");
+          });
+        } catch (err) {
+          console.error("Update failed", err);
+          alert("Failed to update book. Please try again.");
         }
-      } else {
-        // Local-only row: update locally
+      }
+    
+    
+     else {
+        // 🔹 Editing a local-only row: update locally
         setDisplayed((prev) => {
           const next = [...prev];
           const row = { ...next[editingIndex] };
@@ -557,14 +561,16 @@ export default function ManageBooks() {
         });
       }
     } else {
-      // Try to create via backend admin API if we have required fields
+      // 🔹 Creating a new book through the backend admin API
       try {
         const fd = new FormData();
         fd.append("book_title", form.title);
         fd.append("book_author", form.author || "");
-        // Backend expects numeric category id; try to parse, fallback to 1
         const categoryId = parseInt(form.category, 10);
-        fd.append("book_category_id", Number.isFinite(categoryId) ? String(categoryId) : "1");
+        fd.append(
+          "book_category_id",
+          Number.isFinite(categoryId) ? String(categoryId) : "1"
+        );
         fd.append("book_rating", "0");
         fd.append("book_details", form.description || "");
         fd.append("book_availability", "true");
@@ -572,9 +578,8 @@ export default function ManageBooks() {
         if (form.coverFile) {
           fd.append("book_photo", form.coverFile);
         }
-
+  
         const created = await bookService.createBookAdmin(fd);
-        // Map API book detail to table row
         const apiRow = {
           id: `api_${created.book_id}`,
           title: created.book_title || "—",
@@ -589,13 +594,13 @@ export default function ManageBooks() {
         };
         setDisplayed((prev) => [apiRow, ...prev]);
       } catch (err) {
-        // Fallback to local add if backend rejects, but inform user
         console.error(err);
         const detail = err?.response?.data?.detail;
         const serverMessage = Array.isArray(detail)
-          ? detail.map((d) => `${d.loc?.join('.')}: ${d.msg}`).join("\n")
+          ? detail.map((d) => `${d.loc?.join(".")}: ${d.msg}`).join("\n")
           : detail || err?.message || "Failed to create on server";
-        alert(`${serverMessage}`);
+        alert(serverMessage);
+  
         const newRow = {
           id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           title: form.title || "—",
@@ -608,20 +613,15 @@ export default function ManageBooks() {
           audio: form.audioUrl || "",
           description: form.description || "",
         };
-        // Only add locally if no server validation errors in required fields
-        if (!detail) {
-          setDisplayed((prev) => [newRow, ...prev]);
-        }
+        if (!detail) setDisplayed((prev) => [newRow, ...prev]);
       }
     }
-
+  
     setSaving(false);
     setOpen(false);
-
-    // Show toast for 2s
-    setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 2000);
   };
+  
+
 
   const requestDelete = (id) => {
     setPendingDeleteId(id);

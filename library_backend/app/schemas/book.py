@@ -39,13 +39,13 @@ class BookCreate(BaseModel):
     book_availability: bool = True
     book_count: int = 1
 
-
 class BookUpdate(BaseModel):
-    book_title: Optional[str]
-    book_author: Optional[str]
-    book_category_id: Optional[int]
-    book_rating: Optional[float]
-    book_photo: Optional[HttpUrl]
-    book_details: Optional[str]
-    book_availability: Optional[bool]
-    book_count: Optional[int]
+    book_title: Optional[str] = None
+    book_author: Optional[str] = None
+    book_category_id: Optional[int] = None
+    book_rating: Optional[float] = None
+    book_photo: Optional[HttpUrl] = None
+    book_details: Optional[str] = None
+    book_availability: Optional[bool] = None
+    book_count: Optional[int] = None
+

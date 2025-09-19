@@ -18,7 +18,7 @@ router = APIRouter(
 @router.get("/all", response_model=List[CategoryOut])
 async def list_categories(
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_user),
+   
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100)
 ):
@@ -51,6 +51,7 @@ async def update_category(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
+    print("Category Id, Category upd :", category_id, category_update)
     category = await CategoryCRUD.update_category(db, category_id, category_update)
     if not category:
         raise not_found_error("Category", category_id)

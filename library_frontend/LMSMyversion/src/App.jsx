@@ -30,7 +30,7 @@ export default function App() {
       <AuthProvider>
         <Navbar />
 
-        <main className="flex-grow">
+        <main className="flex-grow text-black">
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<Home />} />

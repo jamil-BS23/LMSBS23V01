@@ -25,6 +25,7 @@ import { bookService } from "../../services/bookService";
 import api from "../../config/api";
 
 
+
 const PLACEHOLDER_IMG = "https://dummyimage.com/80x80/e5e7eb/9ca3af&text=📘";
 const PAGE_SIZE = 6; // paginate after 6 books
 
@@ -173,6 +174,8 @@ export default function ManageBooks() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [books, setBooks] = useState([]);
+
   useEffect(() => {
     document.title = "Manage Books";
   }, []);
@@ -239,6 +242,10 @@ export default function ManageBooks() {
       cancelled = true;
     };
   }, []);
+
+
+
+  
 
   // build table data (normalized)
   const baseBooks = useMemo(() => {
@@ -476,25 +483,7 @@ export default function ManageBooks() {
     
       if (originalId) {
         try {
-          // const payload = {
-          //   book_title: form.title,
-          //   book_author: form.author,
-          //   book_category_id: parseInt(form.category, 10),
-          //   book_count: parseInt(form.copies, 10),
-          //   book_details: form.description || "",
-          // };
-
-
-          // const payload = {
-          //   book_title: form.title || "",
-          //   book_author: form.author || "",
-          //   book_category_id: parseInt(form.category, 10) || 1,
-          //   book_rating: form.rating || 0,
-          //   book_photo: form.coverUrl,           // always sent
-          //   book_details: form.description,      // always sent
-          //   book_availability: true,
-          //   book_count: parseInt(form.copies, 10) || 1
-          // };
+          
 
           const payload = {};
           if (form.title) payload.book_title = form.title;
@@ -510,11 +499,6 @@ export default function ManageBooks() {
           payload.book_availability = true;
           
 
-          
-
-          
-
-          
           console.log("original id", originalId)
           const updated = await bookService.updateBookAdmin(originalId, payload);
     
@@ -628,12 +612,36 @@ export default function ManageBooks() {
     setConfirmOpen(true);
   };
 
-  const confirmDelete = () => {
+  // const confirmDelete = () => {
+  //   if (!pendingDeleteId) return;
+  //   setDisplayed((prev) => prev.filter((x) => x.id !== pendingDeleteId));
+  //   setPendingDeleteId(null);
+  //   setConfirmOpen(false);
+  // };
+
+
+  const confirmDelete = async () => {
     if (!pendingDeleteId) return;
-    setDisplayed((prev) => prev.filter((x) => x.id !== pendingDeleteId));
-    setPendingDeleteId(null);
-    setConfirmOpen(false);
+  
+    try {
+      // Extract numeric id if it might look like "json_api_16"
+      const match = String(pendingDeleteId).match(/\d+$/);
+      const numericId = match ? Number(match[0]) : pendingDeleteId;
+  
+      // ✅ Call backend delete
+      await bookService.deleteBook(numericId);
+  
+      // ✅ Update the UI after successful deletion
+      setDisplayed((prev) => prev.filter((x) => x.id !== pendingDeleteId));
+    } catch (err) {
+      console.error("Failed to delete:", err);
+      alert("Delete failed. Please try again.");
+    } finally {
+      setPendingDeleteId(null);
+      setConfirmOpen(false);
+    }
   };
+  
 
   const navItem =
     "flex items-center gap-2 px-3 py-3 text-gray-700 hover:text-sky-500 transition-colors";
@@ -763,7 +771,7 @@ export default function ManageBooks() {
       {/* ---------- Add/Edit Book Modal ---------- */}
       {open && (
         <div
-          className="fixed inset-0 z-50"
+          className="fixed inset-0 z-50 text-black"
           aria-modal="true"
           role="dialog"
           onClick={(e) => {

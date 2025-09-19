@@ -12,7 +12,7 @@ from sqlalchemy import or_
 from pydantic import HttpUrl
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
+from sqlalchemy.exc import NoResultFound
 
 
 
@@ -119,8 +119,22 @@ class BookCRUD:
     #     return db_book
 
 
+    # @staticmethod
+    # async def delete_book(db: AsyncSession, db_book: Book):
+    #     await db.delete(db_book)
+    #     await db.commit()
+    #     return True
+
+
     @staticmethod
-    async def delete_book(db: AsyncSession, db_book: Book):
+    async def delete_book(db: AsyncSession, book_id: int) -> bool:
+        result = await db.execute(select(Book).where(Book.book_id == book_id))
+        db_book = result.scalars().first()
+
+        if not db_book:
+            return False
+
+    
         await db.delete(db_book)
         await db.commit()
         return True

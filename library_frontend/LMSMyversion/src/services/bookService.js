@@ -52,6 +52,9 @@ export const bookService = {
 
   // Delete book
   async deleteBook(id) {
+
+    console.log("Delete Book ID: ", id);
+
     const response = await api.delete(`/books/${id}`);
     return response.data;
   },

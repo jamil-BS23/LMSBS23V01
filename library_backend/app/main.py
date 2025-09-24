@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import FastAPI
-from app.api import auth, users, books, categories, borrow, admin,  uploads
+from app.api import auth, users, books, categories, borrow, admin,  uploads, settings
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -25,4 +25,7 @@ app.include_router(uploads.router, prefix="/files")
 app.include_router(categories.router, prefix="/categories", tags=["Categories"])
 app.include_router(borrow.router, prefix="/borrow", tags=["Borrow"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(settings.router, prefix="/settings", tags=["Settings"])
+app.include_router(settings.router) 
+
 

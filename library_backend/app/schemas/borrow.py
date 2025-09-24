@@ -10,9 +10,9 @@ REQUEST_STATUS = {"accept", "pending", "reject"}
 class BorrowRecord(BaseModel):
     borrow_id: int
     user_id: str
-    user_name: Optional[str]
+    #user_name: Optional[str]
     book_id: int
-    book_title: Optional[str]
+    #book_title: Optional[str]
     borrow_date: date
     return_date: date
     borrow_status: str

@@ -74,11 +74,22 @@ class BorrowCRUD:
             borrow_status="borrowed",
             request_status="pending",
         )
+
+        print("all info: ", db_borrow)
       
         db.add(db_borrow)
 
-        # Update book availability
-        book.book_availability = False
+# --- Update book availability based on count ---
+# Decrease the count of available copies
+        if book.book_count is not None and book.book_count > 0:
+            book.book_count -= 1
+
+# If no copies left, mark as unavailable
+        if book.book_count == 0:
+            book.book_availability = False
+        else:
+            book.book_availability = True  # remains available if count > 0
+
         db.add(book)
 
         await db.commit()

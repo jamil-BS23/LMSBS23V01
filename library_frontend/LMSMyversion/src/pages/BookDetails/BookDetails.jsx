@@ -133,7 +133,7 @@ export default function BookDetails() {
     !b
       ? null
       : {
-          id: b.id,
+          id: b.book_id,
           title: b.book_title,
           authors: b.book_author || "Unknown",
           category: b.book_category_id || "General",
@@ -618,7 +618,7 @@ useEffect(() => {
 
                 // 1) Put it at the FRONT of borrowedBooks (dedupe by id)
                 const list = JSON.parse(localStorage.getItem("borrowedBooks") || "[]")
-                  .filter((b) => String(b.id) !== String(current.id));
+                  .filter((b) => Number(b.book_id) !== Number(current.id));
                 const next = [current, ...list];
                 localStorage.setItem("borrowedBooks", JSON.stringify(next));
 

@@ -17,6 +17,7 @@ from app.schemas.borrow import (
     BorrowListResponse,
     BorrowCountResponse,
     BorrowDetailResponse,
+    BorrowRequestRecord,
 )
 
 
@@ -122,7 +123,7 @@ async def get_borrow_status_count(
 
 
 
-@router.get("/borrow/status/{status}/list", response_model=List[BorrowRecord])
+@router.get("/borrow/status/{status}/list", response_model=List[BorrowRequestRecord])
 async def get_borrow_status_list(
     status: str,
     db: AsyncSession = Depends(get_db),
@@ -132,8 +133,9 @@ async def get_borrow_status_list(
 
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
-
-    return await BorrowCRUD.list_by_borrow_status(db, status=status)
+    result = await BorrowCRUD.list_by_borrow_status(db, status=status)
+    print("result :", result)
+    return result
 
 
 
@@ -157,7 +159,7 @@ async def get_request_status_count(
 
 
 
-@router.get("/borrow/request/{status}/list", response_model=List[BorrowRecord])
+@router.get("/borrow/request/{status}/list", response_model=List[BorrowRequestRecord])
 async def get_borrow_status_list(
     status: str,
     db: AsyncSession = Depends(get_db),

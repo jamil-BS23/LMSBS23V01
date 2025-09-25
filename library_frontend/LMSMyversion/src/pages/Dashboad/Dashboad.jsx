@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Sidebar from "../../components/DashboardSidebar/DashboardSidebar";
+import api from "../../config/api";
+
+
+
 
 export default function Dashboard() {
   useEffect(() => {
@@ -24,16 +28,22 @@ export default function Dashboard() {
   }, []);
 
   // --- Borrow Request demo data (replace with API later) ---
-  const [requests, setRequests] = useState([
-    { book: "Core Java", user: "Sadia Prova", borrowed: "29/07/2025", returned: "03/08/2025" },
-    { book: "SQL in 10 Minutes", user: "Arman Hasan", borrowed: "01/08/2025", returned: "06/08/2025" },
-  ]);
+  
 
   // Confirmation modal state
-  const [confirm, setConfirm] = useState({ open: false, type: null, index: -1 });
-  const openConfirm = (type, index) => setConfirm({ open: true, type, index });
-  const closeConfirm = () => setConfirm({ open: false, type: null, index: -1 });
-
+  const [confirm, setConfirm] = useState({ open: false, type: "", index: -1, id: null });
+  function openConfirm(type, index) {
+    setConfirm({
+      open: true,
+      type,
+      index,
+      id: requests[index].borrow_id,  // ✅ capture borrow_id
+    });
+  }
+  
+  function closeConfirm() {
+    setConfirm({ open: false, type: "", index: -1, id: null });
+  }
   // Toast (2s)
   const [toast, setToast] = useState({ show: false, type: "accept", message: "" });
   const showToast = (type, message) => {
@@ -41,14 +51,33 @@ export default function Dashboard() {
     setTimeout(() => setToast({ show: false, type, message: "" }), 2000);
   };
 
-  const doConfirm = () => {
-    const { type, index } = confirm;
-    if (index > -1) {
-      setRequests((prev) => prev.filter((_, i) => i !== index));
-      showToast(type, type === "accept" ? "Request accepted" : "Request rejected");
+  async function doConfirm() {
+    if (confirm.id == null) return;
+  
+    try {
+      const status = confirm.type === "accept" ? "accepted" : "rejected";
+      await api.patch(`/borrow/borrow/${confirm.id}/request`, null, {
+        params: { status },  // backend expects query param ?status=accepted
+      });
+  
+      // ✅ Update UI: remove the processed request
+      setRequests(prev => prev.filter((_, i) => i !== confirm.index));
+  
+      // show toast
+      setToast({
+        show: true,
+        type: confirm.type,
+        message: `Request ${status}.`,
+      });
+  
+      closeConfirm();
+      // hide toast after 2 seconds
+      setTimeout(() => setToast({ show: false, type: "", message: "" }), 2000);
+    } catch (err) {
+      console.error("Failed to update request:", err);
     }
-    closeConfirm();
-  };
+  }
+  
 
   // -------------------- WEEKLY LINE CHART --------------------
   const WEEK_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -115,74 +144,105 @@ export default function Dashboard() {
   const mm = String(now.getMinutes()).padStart(2, "0");
   const ss = String(now.getSeconds()).padStart(2, "0");
 
+  const [stats, setStats] = useState({
+    borrowed: 0,
+    returned: 0,
+    overdue: 0,
+    pending: 0,
+  });
+  
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const [borrowedRes, returnedRes, overdueRes, pendingRes] = await Promise.all([
+          api.get("/borrow/borrow/status/borrowed/count"),
+          api.get("/borrow/borrow/status/returned/count"),
+          api.get("/borrow/borrow/status/overdue/count"),
+          api.get("/borrow/borrow/request/pending/count"),
+        ]);
+  
+        setStats({
+          borrowed: Number(borrowedRes.data.count || 0),
+          returned: Number(returnedRes.data.count || 0),
+          overdue:  Number(overdueRes.data.count || 0),
+          pending:  Number(pendingRes.data.count || 0),
+        });
+      } catch (error) {
+        console.error("Failed to load dashboard stats:", error);
+      }
+    };
+  
+    fetchCounts();
+  }, []);
+
+
+
+
+
+  const [requests, setRequests] = useState([]);
+  useEffect(() => {
+    const fetchBorrowRequests = async () => {
+      try {
+        const res = await api.get("/borrow/borrow/request/pending/list");
+        // assuming API returns an array of objects with keys:
+        // user_name, book_title, borrow_date, return_date
+        const formatted = (res.data || []).map(item => ({
+          borrow_id: item.borrow_id,
+          book: item.book_title,
+          user: item.user_name,
+          borrowed: item.borrow_date,
+          returned: item.return_date,
+        }));
+        setRequests(formatted);
+      } catch (err) {
+        console.error("Failed to load pending borrow requests:", err);
+      }
+    };
+  
+    fetchBorrowRequests();
+  }, []);
+  
+  const [overdueRecords, setOverdueRecords] = useState([]);
+
+  useEffect(() => {
+    const fetchOverdueRecords = async () => {
+      try {
+        const res = await api.get("/borrow/borrow/status/overdue/list");
+        const formatted = (res.data || []).map((item, i) => ({
+          id: i + 1,
+          book: item.book_title,
+          user: item.user_name,
+          email: item.user_id,      // Assuming user_id represents email
+          returned: item.return_date,
+        }));
+        setOverdueRecords(formatted);
+      } catch (err) {
+        console.error("Failed to load overdue records:", err);
+      }
+    };
+  
+    fetchOverdueRecords();
+  }, []);
+  
+
   return (
     <div className="min-h-screen flex bg-gray-100">
       {/* Sidebar */}
       <Sidebar />
-      {/* <aside className="w-64 bg-white shadow-md px-4 py-6 flex flex-col justify-between">
-        <div>
-          <h2 className="text-xl font-bold mb-6">Library</h2>
-          <ul className="space-y-3">
-            <li>
-              <Link to="/dashboard" className="flex items-center gap-2 text-sky-600 font-medium">
-                <CalendarDays size={18} /> Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link to="/manage-books" className="flex items-center gap-2 text-gray-700 hover:text-sky-500 transition-colors">
-                <BookOpen size={18} /> Manage Books
-              </Link>
-            </li>
-            <li>
-              <Link to="/manage-category" className="flex items-center gap-2 text-gray-700 hover:text-sky-500 transition-colors">
-                <Layers size={18} /> Manage Category
-              </Link>
-            </li> */}
-            {/* <li>
-              <Link to="/upload" className="flex items-center gap-2 text-gray-700 hover:text-sky-500 transition-colors">
-                <Upload size={18} /> Upload Books
-              </Link>
-            </li> */}
-            {/* <li>
-              <Link to="/fill-up-form" className="flex items-center gap-2 text-gray-700 hover:text-sky-500 transition-colors">
-                <BookOpen size={18} /> Fill Up Form
-              </Link>
-            </li>
-            <li>
-              <Link to="/members" className="flex items-center gap-2 text-gray-700 hover:text-sky-500 transition-colors">
-                <Users size={18} /> Member
-              </Link>
-            </li>
-            <li>
-              <Link to="/check-out" className="flex items-center gap-2 text-gray-700 hover:text-sky-500 transition-colors">
-                <BookOpen size={18} /> Check-out Books
-              </Link>
-            </li>
-            <li>
-              <Link to="/setting" className="flex items-center gap-2 text-gray-700 hover:text-sky-500 transition-colors">
-                <HelpCircle size={18} /> Setting
-              </Link>
-            </li>
-          </ul>
-        </div>
-        <div>
-          <Link to="/logout" className="flex items-center gap-2 text-red-600 font-medium hover:underline underline-offset-4">
-            <LogOut size={18} /> Logout
-          </Link>
-        </div>
-      </aside> */}
+     
 
       {/* Main */}
       <main className="flex-1 p-6 space-y-6">
         {/* Top Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Borrowed Books", value: 3504 },
-            { label: "Returned Books", value: 683 },
-            { label: "Overdue Books", value: 145 },
-            { label: "Total Books", value: 5654 },
-            { label: "New Members", value: 120 },
-            { label: "Borrows Pending", value: 222 },
+            { label: "Borrowed Books", value: stats.borrowed },
+            { label: "Returned Books", value: stats.returned },
+            { label: "Overdue Books", value: stats.overdue },
+            { label: "Total Books", value: 5654 },  // fetch /books/all if you want dynamic
+            { label: "New Members", value: 120 },   // likewise if needed
+            { label: "Borrows Pending", value: stats.pending },
           ].map((item, i) => (
             <div key={i} className="bg-white rounded shadow p-4 text-center">
               <p className="text-sm text-gray-500">{item.label}</p>
@@ -190,6 +250,8 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+
+
 
         {/* Graph + Overdue */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -297,6 +359,7 @@ export default function Dashboard() {
           </div>
 
           {/* ---------------------- Overdue’s History (email centered with icon) ---------------------- */}
+          {/* ---------------------- Overdue’s History (email centered with icon) ---------------------- */}
           <div className="bg-white rounded shadow p-4">
             <h3 className="font-semibold mb-2">Overdue’s History</h3>
             <table className="w-full text-sm">
@@ -305,26 +368,37 @@ export default function Dashboard() {
                   <th>#</th>
                   <th>Book name</th>
                   <th>User name</th>
-                  <th className="text-center">Email</th>
+                  <th className="text-center">User ID</th>
                   <th>Returned Date</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-gray-200">
-                  <td>1</td>
-                  <td className="font-semibold">Core Java</td>
-                  <td>Sadia Prova</td>
-                  <td className="text-center">
-                    <span className="inline-flex items-center justify-center gap-1 text-gray-700">
-                      <Mail size={16} className="text-gray-500" />
-                      <span>sadia@company.com</span>
-                    </span>
-                  </td>
-                  <td>03/08/2025</td>
-                </tr>
+                {overdueRecords.length > 0 ? (
+                  overdueRecords.map((r) => (
+                    <tr key={r.id} className="border-b border-gray-200">
+                      <td>{r.id}</td>
+                      <td className="font-semibold">{r.book}</td>
+                      <td>{r.user}</td>
+                      <td className="text-center">
+                        <span className="inline-flex items-center justify-center gap-1 text-gray-700">
+                          <Mail size={16} className="text-gray-500" />
+                          <span>{r.email}</span>
+                        </span>
+                      </td>
+                      <td>{r.returned}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-gray-500">
+                      No overdue records found.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
+
         </div>
 
         {/* Borrow Request (functional) */}
@@ -338,7 +412,7 @@ export default function Dashboard() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left border-b border-gray-200">
-                <th>#</th>
+                <th className="w-10">#</th>
                 <th>Book name</th>
                 <th>User name</th>
                 <th>Borrowed Date</th>

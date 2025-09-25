@@ -20,8 +20,10 @@ export default function FillUpForm() {
   useEffect(() => {
     const books = JSON.parse(localStorage.getItem("borrowedBooks")) || [];
     const fromState = location.state?.borrowNow || location.state?.book || null;
+    console.log("form",fromState);
     const fromKey = JSON.parse(localStorage.getItem("borrowNow") || "null");
     const chosen = fromState || fromKey || (books.length ? books[0] : null);
+    console.log("chosen", chosen);
     setBorrowedBooks(chosen ? [chosen] : []);
   }, [location.state]);
 
@@ -66,13 +68,13 @@ export default function FillUpForm() {
   const handleSubmit = async () => {
     if (!borrowedBooks.length) return;
     setLoading(true);
-  
+    console.log("BorroeBook: ", borrowedBooks);
     try {
       for (const book of borrowedBooks) {
 
         console.log("Borrowing book:", book);
         // Convert book.id to number
-        const res = await api.post("/borrow/borrow/", { book_id: Number(book.book_id) });
+        const res = await api.post("/borrow/borrow/", { book_id: Number(book.id) });
   
         if (!res || !res.data) {
           throw new Error(`Failed for book ${book.title}`);

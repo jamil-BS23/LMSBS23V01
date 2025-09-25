@@ -108,13 +108,14 @@ class BorrowCRUD:
         )
         borrows = result.scalars().all()
 
-
         for borrow in borrows:
             book = await db.get(Book, borrow.book_id)
             borrow.book_title = book.book_title if book else None
 
             user = await db.get(User, borrow.user_id)
             borrow.user_name = user.user_name if user else None
+        
+        print("Borrowes      ::: ",borrows)
 
         return borrows
 

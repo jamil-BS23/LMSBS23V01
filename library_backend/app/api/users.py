@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.user import UserCRUD
 from app.dependencies import get_db
 from app.schemas.user import UserOut, UserList
+from typing import Dict
+
 
 router = APIRouter(tags=["Users"])
 
@@ -13,6 +15,19 @@ async def get_users(skip: int = 0, limit: int = 20, db: AsyncSession = Depends(g
         data=[UserOut.from_orm(u) for u in users],
         meta={"total": len(users), "skip": skip, "limit": limit}
     )
+
+
+@router.get("/count", tags=["Users"])
+async def count_users(db: AsyncSession = Depends(get_db)) -> Dict[str, int]:
+    """
+    Returns the total number of registered users (members).
+    Example response: {"total_users": 100}
+    """
+    total = await UserCRUD.count_users(db)
+    return {"count": total}
+
+
+
 
 @router.get("/{user_id}", response_model=UserOut)
 async def get_user(user_id: str, db: AsyncSession = Depends(get_db)):

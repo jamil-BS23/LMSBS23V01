@@ -8,6 +8,8 @@ from app.dependencies import get_db
 #from app.core.security import get_current_user, get_current_admin
 from app.dependencies import get_current_user, get_current_admin
 from app.utils.minio_utils import upload_file
+from typing import Dict
+
 
 
 
@@ -28,7 +30,14 @@ async def list_books(
     return books
 
 
-
+@router.get("/count", tags=["Public Books"])
+async def count_books(db: AsyncSession = Depends(get_db)) -> Dict[str, int]:
+    """
+    Returns the total number of books in the library.
+    Example response: {"total_books": 123}
+    """
+    total = await BookCRUD.count_books(db)
+    return {"count": total}
 
 
 @router.get("/all", response_model=List[BookDetail], tags=["Admin Books"], dependencies=[Depends(get_current_admin)])

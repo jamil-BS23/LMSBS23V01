@@ -23,8 +23,8 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     # Fetch user by username
     user = await UserCRUD.get_user_by_name(db, payload.user_name)
     
-    print(payload.password)
-    print(user.password)
+   ## print(payload.password)
+    ##print(user.password)
     if not user or not verify_password(payload.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

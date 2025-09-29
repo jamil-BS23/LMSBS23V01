@@ -149,17 +149,21 @@ export default function Dashboard() {
     returned: 0,
     overdue: 0,
     pending: 0,
+    total:0,
+    totalmember: 0,
   });
   
 
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const [borrowedRes, returnedRes, overdueRes, pendingRes] = await Promise.all([
+        const [borrowedRes, returnedRes, overdueRes, pendingRes, tot, totalmem] = await Promise.all([
           api.get("/borrow/borrow/status/borrowed/count"),
           api.get("/borrow/borrow/status/returned/count"),
           api.get("/borrow/borrow/status/overdue/count"),
           api.get("/borrow/borrow/request/pending/count"),
+          api.get("/books/count"),
+          api.get("/users/count"),
         ]);
   
         setStats({
@@ -167,6 +171,10 @@ export default function Dashboard() {
           returned: Number(returnedRes.data.count || 0),
           overdue:  Number(overdueRes.data.count || 0),
           pending:  Number(pendingRes.data.count || 0),
+          total:    Number(tot.data.count || 0),
+          totalmember: Number(totalmem.data.count),
+
+          
         });
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
@@ -240,8 +248,8 @@ export default function Dashboard() {
             { label: "Borrowed Books", value: stats.borrowed },
             { label: "Returned Books", value: stats.returned },
             { label: "Overdue Books", value: stats.overdue },
-            { label: "Total Books", value: 5654 },  // fetch /books/all if you want dynamic
-            { label: "New Members", value: 120 },   // likewise if needed
+            { label: "Total Books", value: stats.total },  // fetch /books/all if you want dynamic
+            { label: "Members", value: stats.totalmember },   // likewise if needed
             { label: "Borrows Pending", value: stats.pending },
           ].map((item, i) => (
             <div key={i} className="bg-white rounded shadow p-4 text-center">

@@ -188,7 +188,7 @@ async def get_my_borrow_status_count(
 
 
 
-@router.get("/borrow/status/{status}/list/my", response_model=List[BorrowRecord])
+@router.get("/borrow/status/{status}/list/my", response_model=List[BorrowRequestRecord])
 async def get_borrow_status_list(
     status: str,
     db: AsyncSession = Depends(get_db),

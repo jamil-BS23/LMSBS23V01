@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 20000000
     MAX_BORROW_LIMIT: int = 5
     ADMIN_EMAIL: str
     ADMIN_PASSWORD: str

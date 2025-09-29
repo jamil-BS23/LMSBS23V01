@@ -1,7 +1,7 @@
 from operator import or_
 from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy import select, func
 from sqlalchemy import update, delete
 from app.models.book import Book
 from app.models.category import Category
@@ -51,6 +51,16 @@ class BookCRUD:
         stmt = stmt.offset(skip).limit(limit)
         result = await db.execute(stmt)
         return result.scalars().all()
+
+
+
+    @staticmethod
+    async def count_books(db: AsyncSession) -> int:
+        """
+        Return total number of books in the library.
+        """
+        result = await db.execute(select(func.count()).select_from(Book))
+        return result.scalar_one()
 
    
 

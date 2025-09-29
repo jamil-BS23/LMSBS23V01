@@ -1,7 +1,7 @@
 
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy import select, func
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from passlib.context import CryptContext
@@ -17,6 +17,15 @@ class UserCRUD:
         return await db.get(User, user_id)
 
         
+    @staticmethod
+    async def count_users(db: AsyncSession) -> int:
+        """
+        Return total number of users (members) in the system.
+        """
+        result = await db.execute(select(func.count()).select_from(User))
+        return result.scalar_one()
+
+
     @staticmethod
     async def get_user_by_name(db, user_name: str):
         result = await db.execute(select(User).where(User.user_name == user_name))

@@ -1,10 +1,13 @@
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional
+from datetime import datetime
+
 
 
 class BookPublic(BaseModel):
     book_id: int
     book_title: str
+    book_category_id: int
     book_photo: Optional[HttpUrl]
     book_availability: bool = Field(..., alias="book_availability")
 
@@ -23,6 +26,7 @@ class BookDetail(BaseModel):
     book_details: Optional[str]
     book_availability: bool = Field(..., alias="book_availability")
     book_count: int
+    created_at: datetime
 
     class Config:
         orm_mode = True

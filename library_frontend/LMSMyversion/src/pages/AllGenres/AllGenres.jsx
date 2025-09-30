@@ -56,6 +56,8 @@ export default function AllGenres() {
       (b.book_category.category_title ?? b.book_category.title)) ??
     null;
 
+    //console.log("book:", b);
+
   // ✅ Filtering by category id or title
   const filtered = useMemo(() => {
     if (!filter) return allBooks;
@@ -107,6 +109,7 @@ export default function AllGenres() {
               Browse Books
             </h2>
           </div>
+
 
           <div className="border-t border-gray-200">
             {pageItems.length ? (

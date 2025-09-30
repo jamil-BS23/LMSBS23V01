@@ -149,8 +149,8 @@ export default function BookDetails() {
           summary: b.book_details || "",
   
           // Demo / placeholder values
-          publisher: "—",
-          publishDate: "",
+          publisher: b.book_author,
+          publishDate: b.created_at || "null",
           pdfLink: "#",
           image: null,
           summaryIntro: null,
@@ -185,6 +185,7 @@ useEffect(() => {
         `${import.meta.env.VITE_API_BASE_URL}/books/all`
       );
       const allBooks = await allRes.json();
+      console.log(allBooks);
 
       // 2️⃣ Determine the active (clicked) book
       let active = null;
@@ -210,13 +211,31 @@ useEffect(() => {
         setBookData(null);
       }
 
-      // 4️⃣ Related books
-      const others = (allBooks || [])
-        .filter((b) => String(b.book_id) !== String(id))
-        .slice(0, 3)
-        .map(normalize)
-        .filter(Boolean);
-      setRelatedBooks(others);
+      // // 4️⃣ Related books
+      // const others = (allBooks || [])
+      //   .filter((b) => String(b.book_id) !== String(id)) // exclude current book
+      //   .filter((b) => Number(b.book_category_id)== Number(b.category_id))// same category
+      //   .slice(0, 3)
+      //   .map(normalize)
+      //   .filter(Boolean);
+      // setRelatedBooks(others);
+
+
+      // 4️⃣ Related books by category
+const others = (allBooks || [])
+ // exclude current book
+filter(
+  (b) =>
+    Number(b.book_category_id) === Number(active?.book_category_id) // match category
+)
+.slice(0, 3) // limit to 3 related books
+.map(normalize)
+.filter(Boolean);
+
+setRelatedBooks(others);
+
+
+      
 
       // 5️⃣ Category stats
       const targetCategory = (active?.book_category_id ?? "General").toLowerCase();

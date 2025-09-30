@@ -30,3 +30,10 @@ app.include_router(settings.router)
 app.include_router(donation_book.router, prefix="/donation", tags="Donation Book")
 
 
+@app.get("/")
+async def root():
+    return {
+        "message": "📚 Library Backend API is running 🚀",
+        "docs_url": "/docs",
+        "redoc_url": "/redoc"
+    }

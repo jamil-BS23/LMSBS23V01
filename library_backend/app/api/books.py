@@ -69,9 +69,13 @@ async def create_book(
     book_availability: bool = Form(True),
     book_count: int = Form(1),
     book_photo: UploadFile = File(...),
+    book_pdf: UploadFile = File(None),
+    book_audio: UploadFile = File(None),
     db: AsyncSession = Depends(get_db)
 ):
     photo_url = upload_file(book_photo, folder="books")
+    pdf_url = upload_file(book_pdf, folder="book_pdfs") if book_pdf else None
+    audio_url = upload_file(book_audio, folder="book_audios") if book_audio else None
 
     book_in = {
         "book_title": book_title,
@@ -82,6 +86,8 @@ async def create_book(
         "book_availability": book_availability,
         "book_count": book_count,
         "book_photo": photo_url,
+        "book_pdf": pdf_url,
+        "book_audio": audio_url,
     }
 
     book = await BookCRUD.create_book(db, book_in)

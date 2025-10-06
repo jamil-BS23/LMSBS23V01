@@ -473,137 +473,68 @@ export default function ManageBooks() {
 
   const handleSave = async () => {
     setSaving(true);
-    if (mode === "edit" && editingIndex >= 0) {
-      const currentRow = displayed[editingIndex];
-    
-      // Use numeric ID directly\
-      console.log("current Row", currentRow)
-      const originalId = currentRow.book_id || currentRow.id; // whichever exists
-      console.log("Updating book ID:", originalId);
-    
-      if (originalId) {
-        try {
-          
-
-          const payload = {};
-          if (form.title) payload.book_title = form.title;
-          if (form.author) payload.book_author = form.author;
-          if (form.category) payload.book_category_id = parseInt(form.category, 10);
-          if (form.rating !== undefined && form.rating !== null) payload.book_rating = form.rating;
-          if (form.coverFile || form.coverUrl) {
-            // Only send book_photo if user selected a new file or URL
-            payload.book_photo = form.coverFile;
-          }
-          if (form.description) payload.book_details = form.description; 
-          if (form.copies) payload.book_count = parseInt(form.copies, 10);
-          payload.book_availability = true;
-          
-
-          console.log("original id", originalId)
-          const updated = await bookService.updateBookAdmin(originalId, payload);
-    
-          // Update the row in the table
-          setDisplayed((prev) => {
-            const next = [...prev];
-            next[editingIndex] = {
-              ...next[editingIndex],
-              title: updated.book_title,
-              author: updated.book_author,
-              category: String(updated.book_category_id),
-              copies: updated.book_count,
-              cover: updated.book_photo
-                ? normalizeCoverUrl(updated.book_photo)
-                : next[editingIndex].cover,
-              description: updated.book_details,
-              updatedOn: toYMD(new Date().toISOString()),
-            };
-            return next;
-          });
-        } catch (err) {
-          console.error("Update failed", err);
-          alert("Failed to update book. Please try again.");
-        }
+  
+    try {
+      const fd = new FormData();
+      fd.append("book_title", form.title || "");
+      fd.append("book_author", form.author || "");
+      const categoryId = parseInt(form.category, 10);
+      fd.append(
+        "book_category_id",
+        Number.isFinite(categoryId) ? String(categoryId) : "1"
+      );
+      fd.append("book_rating", "0");
+      fd.append("book_details", form.description || "");
+      fd.append("book_availability", "true");
+      fd.append("book_count", form.copies ? String(form.copies) : "1");
+  
+      // ✅ Upload files like cover image
+      if (form.coverFile) fd.append("book_photo", form.coverFile);
+      if (form.pdfFile) fd.append("book_pdf", form.pdfFile);
+      if (form.audioFile) fd.append("book_audio", form.audioFile);
+  
+      let savedBook;
+      if (mode === "edit" && editingIndex >= 0) {
+        const currentRow = displayed[editingIndex];
+        const originalId = currentRow.book_id || currentRow.id;
+        savedBook = await bookService.updateBookAdmin(originalId, fd);
+      } else {
+        savedBook = await bookService.createBookAdmin(fd);
       }
-    
-    
-     else {
-        // 🔹 Editing a local-only row: update locally
+  
+      const apiRow = {
+        id: `api_${savedBook.book_id}`,
+        title: savedBook.book_title || "—",
+        author: savedBook.book_author || "—",
+        category: String(savedBook.book_category_id ?? "—"),
+        copies: savedBook.book_count ?? "—",
+        updatedOn: toYMD(new Date().toISOString()),
+        cover: normalizeCoverUrl(savedBook.book_photo),
+        pdf: savedBook.book_pdf || "",
+        audio: savedBook.book_audio || "",
+        description: savedBook.book_details || "",
+      };
+  
+      // Update the UI
+      if (mode === "edit" && editingIndex >= 0) {
         setDisplayed((prev) => {
           const next = [...prev];
-          const row = { ...next[editingIndex] };
-          row.title = form.title || "—";
-          row.author = form.author || "—";
-          row.category = form.category || "—";
-          row.copies = form.copies || "—";
-          row.cover = form.coverUrl || row.cover || PLACEHOLDER_IMG;
-          row.pdf = form.pdfUrl || row.pdf || "";
-          row.audio = form.audioUrl || row.audio || "";
-          row.description = form.description || "";
-          row.updatedOn = toYMD(new Date().toISOString());
-          next[editingIndex] = row;
+          next[editingIndex] = apiRow;
           return next;
         });
-      }
-    } else {
-      // 🔹 Creating a new book through the backend admin API
-      try {
-        const fd = new FormData();
-        fd.append("book_title", form.title);
-        fd.append("book_author", form.author || "");
-        const categoryId = parseInt(form.category, 10);
-        fd.append(
-          "book_category_id",
-          Number.isFinite(categoryId) ? String(categoryId) : "1"
-        );
-        fd.append("book_rating", "0");
-        fd.append("book_details", form.description || "");
-        fd.append("book_availability", "true");
-        fd.append("book_count", form.copies ? String(form.copies) : "1");
-        if (form.coverFile) {
-          fd.append("book_photo", form.coverFile);
-        }
-  
-        const created = await bookService.createBookAdmin(fd);
-        const apiRow = {
-          id: `api_${created.book_id}`,
-          title: created.book_title || "—",
-          author: created.book_author || "—",
-          category: String(created.book_category_id ?? "—"),
-          copies: created.book_count ?? "—",
-          updatedOn: toYMD(new Date().toISOString()),
-          cover: normalizeCoverUrl(created.book_photo),
-          pdf: "",
-          audio: "",
-          description: created.book_details || "",
-        };
+      } else {
         setDisplayed((prev) => [apiRow, ...prev]);
-      } catch (err) {
-        console.error(err);
-        const detail = err?.response?.data?.detail;
-        const serverMessage = Array.isArray(detail)
-          ? detail.map((d) => `${d.loc?.join(".")}: ${d.msg}`).join("\n")
-          : detail || err?.message || "Failed to create on server";
-        alert(serverMessage);
-  
-        const newRow = {
-          id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          title: form.title || "—",
-          author: form.author || "—",
-          category: form.category || "—",
-          copies: form.copies || "—",
-          updatedOn: toYMD(new Date().toISOString()),
-          cover: form.coverUrl || PLACEHOLDER_IMG,
-          pdf: form.pdfUrl || "",
-          audio: form.audioUrl || "",
-          description: form.description || "",
-        };
-        if (!detail) setDisplayed((prev) => [newRow, ...prev]);
       }
-    }
   
-    setSaving(false);
-    setOpen(false);
+      setOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save book. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
+  
   
 
 

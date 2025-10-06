@@ -63,6 +63,24 @@ async def borrow_book(
 
 
 
+@router.post("/borrow/pdf/{book_id}", response_model=BorrowRecord, tags=["Borrow"])
+async def borrow_pdf(
+    book_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.user.User = Depends(get_current_active_user),
+):
+    """
+    Create a borrow record for PDF download.
+    - borrow_date = today
+    - return_date = today
+    - borrow_status = 'pdf-borrow'
+    - request_status = 'accepted'
+    """
+    return await BorrowCRUD.create_pdf_borrow(db=db, user=current_user, book_id=book_id)
+
+
+
+
 
 
 @router.get("/borrow/my", response_model=List[BorrowDetailResponse])

@@ -18,6 +18,7 @@ import {
   ThumbsDown,
 } from "lucide-react";
 import BookCard from "../../components/BookCard/BookCard";
+import api from "../../config/api";
 
 /** Demo reviews DB (unchanged) */
 const REVIEWS_DB = {
@@ -127,7 +128,7 @@ export default function BookDetails() {
   };
 
   const pickAudio = (b) =>
-    b?.audio || b?.audioSrc || b?.audioLink || b?.audio_clip || b?.audioURL || null;
+    b?.book_audio || b?.audioSrc || b?.audioLink || b?.audio_clip || b?.audioURL || null;
 
   const normalize = (b) =>
     !b
@@ -151,7 +152,7 @@ export default function BookDetails() {
           // Demo / placeholder values
           publisher: b.book_author,
           publishDate: b.created_at || "null",
-          pdfLink: "#",
+          pdfLink: b.book_pdf,
           image: null,
           summaryIntro: null,
           summaryTail: null,
@@ -159,7 +160,7 @@ export default function BookDetails() {
             "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=240&h=240&fit=crop",
           authorFollowers: 16,
           authorBio: "",
-          audioSrc: null,
+          audioSrc: b.book_audio,
         };
   
   
@@ -565,7 +566,7 @@ setRelatedBooks(others);
               <button
                 type="button"
                 onClick={toggleAudio}
-                disabled={!bookData.audioSrc}
+                enabled={!bookData.audioSrc}
                 className={`flex items-center gap-2 text-sm ${
                   bookData.audioSrc
                     ? "text-gray-700 hover:text-sky-600"
@@ -612,14 +613,60 @@ setRelatedBooks(others);
                 crossOrigin="anonymous"
               />
 
-              <a
+              {/* <a
                 href={bookData.pdfLink}
                 download
                 className="ml-auto inline-flex items-center gap-1 text-sm text-gray-700 font-semibold border border-gray-300 px-4 py-2 rounded hover:bg-gray-100"
               >
                 <Download className="w-4 h-4" />
                 PDF
-              </a>
+              </a> */}
+
+<button
+  onClick={async () => {
+    try {
+      if (!bookData?.id) {
+        alert("Book ID is missing!");
+        return;
+      }
+
+      // ✅ Local check: Has the user already borrowed this PDF?
+      const borrowedPDFs = JSON.parse(localStorage.getItem("borrowedPDFs") || "[]");
+      if (borrowedPDFs.includes(bookData.id)) {
+        console.log("Already borrowed this PDF");
+      } else {
+        const res = await api.post(`/borrow/borrow/pdf/${bookData.id}`);
+        console.log("Borrow record created:", res.data);
+
+        // ✅ Mark as borrowed locally
+        borrowedPDFs.push(bookData.id);
+        localStorage.setItem("borrowedPDFs", JSON.stringify(borrowedPDFs));
+      }
+
+      // ✅ Always open/download PDF
+      const link = document.createElement("a");
+      link.href = bookData.pdfLink;
+      link.download = `${bookData.book_title}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (err) {
+      console.error(err);
+      if (err.response) {
+        alert(`Error: ${err.response.data.detail}`);
+      } else {
+        alert("Failed to borrow PDF. Try again.");
+      }
+    }
+  }}
+  className="ml-auto inline-flex items-center gap-1 text-sm text-gray-700 font-semibold border border-gray-300 px-4 py-2 rounded hover:bg-gray-100"
+>
+  <Download className="w-4 h-4" />
+  PDF
+</button>
+
+
             </div>
 
             {!bookData.audioSrc && (

@@ -43,6 +43,32 @@ class BorrowCRUD:
         return result.scalar_one()
 
 
+    @staticmethod
+    async def create_pdf_borrow(db: AsyncSession, user: User, book_id: int):
+        # 1️⃣ Get the book
+        book = await db.get(Book, book_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        if not book.book_pdf:
+            raise HTTPException(status_code=400, detail="PDF not available for this book")
+
+        # 2️⃣ Create Borrow record
+        today = date.today()
+        db_borrow = BorrowRecord(
+            user_id=user.user_id,
+            book_id=book.book_id,
+            borrow_date=today,
+            return_date=today,
+            borrow_status="pdf-borrow",
+            request_status="accepted",
+        )
+        db.add(db_borrow)
+        await db.commit()
+        await db.refresh(db_borrow)
+        return db_borrow
+
+
 
 
     @staticmethod

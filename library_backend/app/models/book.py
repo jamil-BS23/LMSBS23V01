@@ -11,6 +11,8 @@ class Book(Base):
     book_category_id = Column(Integer, ForeignKey("categories.category_id", ondelete="CASCADE"))
     book_rating = Column(DECIMAL(2,1), default=0)
     book_photo = Column(String, nullable=True)
+    book_pdf = Column(String, nullable=True)
+    book_audio = Column(String, nullable=True)
     book_details = Column(String, nullable=True)
     book_availability = Column(Boolean, default=True)
     book_count = Column(Integer, default=1)

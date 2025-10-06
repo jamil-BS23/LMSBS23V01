@@ -23,6 +23,8 @@ class BookDetail(BaseModel):
     book_category_id: int
     book_rating: float
     book_photo: Optional[HttpUrl]
+    book_pdf: Optional[HttpUrl]
+    book_audio: Optional[HttpUrl]
     book_details: Optional[str]
     book_availability: bool = Field(..., alias="book_availability")
     book_count: int
@@ -39,6 +41,8 @@ class BookCreate(BaseModel):
     book_category_id: int
     book_rating: float = 0.0
     book_photo: Optional[HttpUrl]
+    book_pdf: Optional[HttpUrl]
+    book_audio: Optional[HttpUrl]
     book_details: Optional[str]
     book_availability: bool = True
     book_count: int = 1
@@ -49,6 +53,8 @@ class BookUpdate(BaseModel):
     book_category_id: Optional[int] = None
     book_rating: Optional[float] = None
     book_photo: Optional[HttpUrl] = None
+    book_pdf: Optional[HttpUrl] = None
+    book_audio: Optional[HttpUrl] = None
     book_details: Optional[str] = None
     book_availability: Optional[bool] = None
     book_count: Optional[int] = None

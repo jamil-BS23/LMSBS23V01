@@ -28,11 +28,15 @@ async def create_donation_book(
     book_detail: Optional[str] = Form(None),
     book_count: int = Form(1),
     book_photo: UploadFile = File(...),      # keep same as book API (required)
+    book_pdf: UploadFile = File(None),
+    book_audio: UploadFile = File(None),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     # ➤ 1. Upload to MinIO (same helper as Book API)
     photo_url = upload_file(book_photo, folder="books")
+    pdf_url = upload_file(book_pdf, folder="book_pdfs") if book_pdf else None
+    audio_url = upload_file(book_audio, folder="book_audios") if book_audio else None
 
     # ➤ 2. Prepare DB payload
     payload = {
@@ -44,6 +48,8 @@ async def create_donation_book(
         "BS_ID": BS_ID,           # Not linked to user_id
         "book_detail": book_detail,
         "book_photo": photo_url,  # stored MinIO URL
+        "book_pdf": pdf_url,
+        "book_audio": audio_url,
         "book_count": book_count,
     }
 

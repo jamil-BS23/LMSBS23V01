@@ -14,6 +14,8 @@ class DonationBook(Base):
     BS_ID = Column(String(100), nullable=False)   # <-- just a normal String now
     book_detail = Column(String)
     book_photo = Column(String)
+    book_pdf = Column(String)
+    book_audio = Column(String)
     book_count = Column(Integer)
     book_approve = Column(String(100), default="pending")
     created_at = Column(TIMESTAMP, server_default=func.now())

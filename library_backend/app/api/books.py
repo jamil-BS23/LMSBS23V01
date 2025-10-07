@@ -7,6 +7,8 @@ from app.schemas.book import BookPublic, BookDetail, BookCreate, BookUpdate
 from app.dependencies import get_db
 #from app.core.security import get_current_user, get_current_admin
 from app.dependencies import get_current_user, get_current_admin
+from app.models.user_rating import UserRating
+
 from app.utils.minio_utils import upload_file
 from typing import Dict
 
@@ -123,3 +125,45 @@ async def delete_book(book_id: int, db: AsyncSession = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=409, detail="Book cannot be deleted while borrowed")
     return
+
+
+@router.patch("/{book_id}/rate", response_model=BookDetail, tags=["Books"])
+async def rate_book(
+    book_id: int,
+    rating: float,
+    db: AsyncSession = Depends(get_db),
+    current_user: int = Depends(get_current_user)
+):
+    # 1️⃣ Check book exists
+    book = await db.get(Book, book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    # 2️⃣ Check if user already rated
+    existing_rating = await db.execute(
+        select(UserRating).where(
+            UserRating.user_id == current_user.user_id,
+            UserRating.book_id == book_id
+        )
+    )
+    existing_rating = existing_rating.scalar_one_or_none()
+    if existing_rating:
+        raise HTTPException(status_code=400, detail="You have already rated this book")
+
+    # 3️⃣ Create new rating
+    new_rating = UserRating(user_id=current_user.user_id, book_id=book_id, rating=rating)
+    db.add(new_rating)
+
+    # 4️⃣ Update book average rating
+    # Fetch all ratings for this book including the new one
+    all_ratings = await db.execute(
+        select(UserRating.rating).where(UserRating.book_id == book_id)
+    )
+    all_ratings = [r[0] for r in all_ratings.fetchall()] + [rating]  # include new rating
+    book.book_rating = round(sum(all_ratings)/len(all_ratings), 1)
+
+    db.add(book)
+    await db.commit()
+    await db.refresh(book)
+
+    return book

@@ -11,6 +11,8 @@ class DonationBookBase(BaseModel):
     BS_ID: str
     book_detail: Optional[str] = None
     book_photo: Optional[HttpUrl] = None
+    book_pdf: Optional[HttpUrl] = None
+    book_audio: Optional[HttpUrl] = None
     book_count: int = 1
 
 class DonationBookCreate(DonationBookBase):
@@ -34,7 +36,9 @@ class DonationBookResponse(BaseModel):
     BS_mail: str
     BS_ID: str
     book_detail: str
-    book_photo: str
+    book_photo: Optional[str] = None  # allow null
+    book_pdf: Optional[str] = None    # allow null
+    book_audio: Optional[str] = None 
     book_count: int
     book_approve: str
 

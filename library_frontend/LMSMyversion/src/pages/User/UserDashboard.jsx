@@ -1,6 +1,4 @@
 
-
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import UserSidebar from "../../components/UserSidebar/UserSidebar";
@@ -19,7 +17,6 @@ export default function UserDashboard() {
       try {
         setLoading(true);
 
-        // ---- fetch counts in parallel ----
         const [borrowedC, overdueC, returnedC] = await Promise.all([
           api.get("/borrow/borrow/status/borrowed/count/my"),
           api.get("/borrow/borrow/status/overdue/count/my"),
@@ -32,7 +29,6 @@ export default function UserDashboard() {
           returned: returnedC.data.count ?? 0,
         });
 
-        // ---- fetch borrowed & overdue lists ----
         const [borrowedL, overdueL] = await Promise.all([
           api.get("/borrow/borrow/status/borrowed/list/my"),
           api.get("/borrow/borrow/status/overdue/list/my"),
@@ -95,7 +91,6 @@ export default function UserDashboard() {
       await api.patch(`/borrow/borrow/${borrowId}/status`, null, {
         params: { status: "returned" },
       });
-      // Optional: refresh table or update UI locally
       setMyLoans((prev) =>
         prev.map((item) =>
           item.id === borrowId ? { ...item, status: "returned" } : item
@@ -106,6 +101,25 @@ export default function UserDashboard() {
       alert("Failed to mark as returned");
     }
   }
+
+  // ---------- Pagination Logic ----------
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+  const totalPages = Math.ceil(myLoans.length / itemsPerPage);
+  const maxPagesToShow = 3;
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedLoans = myLoans.slice(startIndex, startIndex + itemsPerPage);
+
+  const getPaginationRange = () => {
+    const start = Math.floor((currentPage - 1) / maxPagesToShow) * maxPagesToShow + 1;
+    const end = Math.min(start + maxPagesToShow - 1, totalPages);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
 
   return (
     <div className="min-h-screen flex bg-gray-100">
@@ -132,81 +146,313 @@ export default function UserDashboard() {
 
         {/* ---- My Loans Table ---- */}
         <div className="bg-white rounded shadow p-4">
-          {/* <div className="flex justify-between items-center mb-2">
-            <h3 className="font-semibold">My current loans</h3>
-            <Link to="/loans" className="text-xs text-green-600 hover:underline">
-              View All
-            </Link>
-          </div> */}
-
           {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
           {loading ? (
             <p className="text-gray-500 text-sm">Loading…</p>
           ) : (
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left border-b border-gray-200">
-                    <th className="py-2 px-3">#</th>
-                    <th className="py-2 px-3 min-w-[180px]">Title</th>
-                    <th className="py-2 px-3 min-w-[160px]">User Name</th>
-                    <th className="py-2 px-3 min-w-[140px]">Borrow Date</th>
-                    <th className="py-2 px-3 min-w-[140px]">Due Date</th>
-                    <th className="py-2 px-3 min-w-[120px]">Status</th>
-                    <th className="py-2 px-3 min-w-[220px] text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myLoans.map((l, i) => (
-                    <tr key={l.id} className="border-b border-gray-200">
-                      <td className="py-2 px-3">{i + 1}</td>
-                      <td className="py-2 px-3 font-medium">{l.title}</td>
-                      <td className="py-2 px-3">{l.userName}</td>
-                      <td className="py-2 px-3">{l.borrowDate || "—"}</td>
-                      <td className="py-2 px-3">{l.due || "—"}</td>
-                      <td className="py-2 px-3">
-                        <span className={statusBadge(l.status)}>{l.status}</span>
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {/* <button
-                            type="button"
-                            onClick={() => openModal("expected", l)}
-                            className="inline-flex items-center gap-1 rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-400"
-                          >
-                            Expected
-                          </button> */}
-                          <button
-                            type="button"
-                            onClick={() => handleReturn(l.id)}   // pass borrow_id here
-                            className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-400"
-                          >
-                            Return
-                          </button>
-
-                        </div>
-                      </td>
+            <>
+              <div className="w-full overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left border-b border-gray-200">
+                      <th className="py-2 px-3">#</th>
+                      <th className="py-2 px-3 min-w-[180px]">Title</th>
+                      <th className="py-2 px-3 min-w-[160px]">User Name</th>
+                      <th className="py-2 px-3 min-w-[140px]">Borrow Date</th>
+                      <th className="py-2 px-3 min-w-[140px]">Due Date</th>
+                      <th className="py-2 px-3 min-w-[120px]">Status</th>
+                      <th className="py-2 px-3 min-w-[220px] text-center">Action</th>
                     </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedLoans.map((l, i) => (
+                      <tr key={l.id} className="border-b border-gray-200">
+                        <td className="py-2 px-3">{startIndex + i + 1}</td>
+                        <td className="py-2 px-3 font-medium">{l.title}</td>
+                        <td className="py-2 px-3">{l.userName}</td>
+                        <td className="py-2 px-3">{l.borrowDate || "—"}</td>
+                        <td className="py-2 px-3">{l.due || "—"}</td>
+                        <td className="py-2 px-3">
+                          <span className={statusBadge(l.status)}>{l.status}</span>
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleReturn(l.id)}
+                              className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-400"
+                            >
+                              Return
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {paginatedLoans.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-6 text-center text-gray-500">
+                          No active loans.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ---- Pagination Section ---- */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex justify-center space-x-2 border-t border-gray-200 pt-3">
+                  <button
+                    className={`px-3 py-1 border rounded-md ${
+                      currentPage === 1 ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"
+                    }`}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Prev
+                  </button>
+
+                  {getPaginationRange().map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-1 border rounded-md ${
+                        page === currentPage
+                          ? "bg-sky-600 text-white"
+                          : "hover:bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {page}
+                    </button>
                   ))}
 
-                  {myLoans.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="py-6 text-center text-gray-500">
-                        No active loans.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  <button
+                    className={`px-3 py-1 border rounded-md ${
+                      currentPage === totalPages ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"
+                    }`}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
-
-        {/* Quick search and modal/toast sections remain unchanged */}
       </main>
     </div>
   );
 }
+
+
+// import { useEffect, useState } from "react";
+// import { Link } from "react-router-dom";
+// import UserSidebar from "../../components/UserSidebar/UserSidebar";
+// import api from "../../config/api"; // axios instance with auth headers
+
+// export default function UserDashboard() {
+//   const [counts, setCounts] = useState({ borrowed: 0, overdue: 0, returned: 0 });
+//   const [myLoans, setMyLoans] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState("");
+
+//   useEffect(() => {
+//     document.title = "My Library";
+
+//     const fetchData = async () => {
+//       try {
+//         setLoading(true);
+
+//         // ---- fetch counts in parallel ----
+//         const [borrowedC, overdueC, returnedC] = await Promise.all([
+//           api.get("/borrow/borrow/status/borrowed/count/my"),
+//           api.get("/borrow/borrow/status/overdue/count/my"),
+//           api.get("/borrow/borrow/status/returned/count/my"),
+//         ]);
+
+//         setCounts({
+//           borrowed: borrowedC.data.count ?? 0,
+//           overdue: overdueC.data.count ?? 0,
+//           returned: returnedC.data.count ?? 0,
+//         });
+
+//         // ---- fetch borrowed & overdue lists ----
+//         const [borrowedL, overdueL] = await Promise.all([
+//           api.get("/borrow/borrow/status/borrowed/list/my"),
+//           api.get("/borrow/borrow/status/overdue/list/my"),
+//         ]);
+
+//         const combined = [...borrowedL.data, ...overdueL.data].map((b, idx) => ({
+//           id: b.borrow_id || `row-${idx}`,
+//           title: b.book_title,
+//           userName: b.user_name,
+//           borrowDate: b.borrow_date,
+//           due: b.return_date,
+//           status:
+//             b.borrow_status?.charAt(0).toUpperCase() + b.borrow_status?.slice(1),
+//         }));
+
+//         setMyLoans(combined);
+//       } catch (err) {
+//         console.error(err);
+//         setError("Failed to load data");
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchData();
+//   }, []);
+
+//   const statusBadge = (s) => {
+//     const base =
+//       "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium";
+//     if (s.toLowerCase() === "overdue") return `${base} bg-red-100 text-red-700`;
+//     if (s.toLowerCase() === "borrowed") return `${base} bg-sky-100 text-sky-700`;
+//     return `${base} bg-green-100 text-green-700`;
+//   };
+
+//   // ---------- Modal & toast logic ----------
+//   const [modal, setModal] = useState({
+//     open: false,
+//     type: null,
+//     loan: null,
+//     date: "",
+//     note: "",
+//   });
+//   const openModal = (type, loan) =>
+//     setModal({ open: true, type, loan, date: loan?.due || "", note: "" });
+//   const closeModal = () =>
+//     setModal({ open: false, type: null, loan: null, date: "", note: "" });
+//   const [toast, setToast] = useState({ show: false, msg: "" });
+//   const showToast = (msg) => {
+//     setToast({ show: true, msg });
+//     setTimeout(() => setToast({ show: false, msg: "" }), 1800);
+//   };
+//   const confirmModal = () => {
+//     showToast(modal.type === "expected" ? "Expected date saved" : "Return recorded");
+//     closeModal();
+//   };
+
+//   async function handleReturn(borrowId) {
+//     try {
+//       await api.patch(`/borrow/borrow/${borrowId}/status`, null, {
+//         params: { status: "returned" },
+//       });
+//       // Optional: refresh table or update UI locally
+//       setMyLoans((prev) =>
+//         prev.map((item) =>
+//           item.id === borrowId ? { ...item, status: "returned" } : item
+//         )
+//       );
+//     } catch (err) {
+//       console.error("Return failed:", err);
+//       alert("Failed to mark as returned");
+//     }
+//   }
+
+//   return (
+//     <div className="min-h-screen flex bg-gray-100">
+//       <UserSidebar active="dashboard" />
+
+//       <main className="flex-1 p-6 space-y-6">
+//         <h1 className="text-xl md:text-2xl font-bold text-gray-800">Welcome back!</h1>
+
+//         {/* ---- Stats ---- */}
+//         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+//           <div className="bg-white rounded shadow p-4 text-center">
+//             <p className="text-sm text-gray-500">Borrowed</p>
+//             <p className="text-xl font-bold text-gray-800">{counts.borrowed}</p>
+//           </div>
+//           <div className="bg-white rounded shadow p-4 text-center">
+//             <p className="text-sm text-gray-500">Overdue</p>
+//             <p className="text-xl font-bold text-red-600">{counts.overdue}</p>
+//           </div>
+//           <div className="bg-white rounded shadow p-4 text-center">
+//             <p className="text-sm text-gray-500">Returned</p>
+//             <p className="text-xl font-bold text-gray-800">{counts.returned}</p>
+//           </div>
+//         </div>
+
+//         {/* ---- My Loans Table ---- */}
+//         <div className="bg-white rounded shadow p-4">
+//           {/* <div className="flex justify-between items-center mb-2">
+//             <h3 className="font-semibold">My current loans</h3>
+//             <Link to="/loans" className="text-xs text-green-600 hover:underline">
+//               View All
+//             </Link>
+//           </div> */}
+
+//           {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+//           {loading ? (
+//             <p className="text-gray-500 text-sm">Loading…</p>
+//           ) : (
+//             <div className="w-full overflow-x-auto">
+//               <table className="w-full text-sm">
+//                 <thead>
+//                   <tr className="text-left border-b border-gray-200">
+//                     <th className="py-2 px-3">#</th>
+//                     <th className="py-2 px-3 min-w-[180px]">Title</th>
+//                     <th className="py-2 px-3 min-w-[160px]">User Name</th>
+//                     <th className="py-2 px-3 min-w-[140px]">Borrow Date</th>
+//                     <th className="py-2 px-3 min-w-[140px]">Due Date</th>
+//                     <th className="py-2 px-3 min-w-[120px]">Status</th>
+//                     <th className="py-2 px-3 min-w-[220px] text-center">Action</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {myLoans.map((l, i) => (
+//                     <tr key={l.id} className="border-b border-gray-200">
+//                       <td className="py-2 px-3">{i + 1}</td>
+//                       <td className="py-2 px-3 font-medium">{l.title}</td>
+//                       <td className="py-2 px-3">{l.userName}</td>
+//                       <td className="py-2 px-3">{l.borrowDate || "—"}</td>
+//                       <td className="py-2 px-3">{l.due || "—"}</td>
+//                       <td className="py-2 px-3">
+//                         <span className={statusBadge(l.status)}>{l.status}</span>
+//                       </td>
+//                       <td className="py-2 px-3 text-center">
+//                         <div className="flex items-center justify-center gap-2">
+//                           {/* <button
+//                             type="button"
+//                             onClick={() => openModal("expected", l)}
+//                             className="inline-flex items-center gap-1 rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-400"
+//                           >
+//                             Expected
+//                           </button> */}
+//                           <button
+//                             type="button"
+//                             onClick={() => handleReturn(l.id)}   // pass borrow_id here
+//                             className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-400"
+//                           >
+//                             Return
+//                           </button>
+
+//                         </div>
+//                       </td>
+//                     </tr>
+//                   ))}
+
+//                   {myLoans.length === 0 && (
+//                     <tr>
+//                       <td colSpan={7} className="py-6 text-center text-gray-500">
+//                         No active loans.
+//                       </td>
+//                     </tr>
+//                   )}
+//                 </tbody>
+//               </table>
+//             </div>
+//           )}
+//         </div>
+
+//         {/* Quick search and modal/toast sections remain unchanged */}
+//       </main>
+//     </div>
+//   );
+// }
 
 
 

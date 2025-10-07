@@ -6,6 +6,7 @@ from sqlalchemy import update, delete
 from app.models.book import Book
 from app.models.category import Category
 from app.schemas.book import BookCreate, BookUpdate
+from app.models.user_rating import UserRating
 from fastapi import HTTPException, status
 from typing import Optional
 from sqlalchemy import or_
@@ -148,3 +149,38 @@ class BookCRUD:
         await db.delete(db_book)
         await db.commit()
         return True
+
+
+
+
+    @staticmethod
+    async def user_already_rated(db: AsyncSession, user_id: int, book_id: int) -> bool:
+        query = select(UserRating).where(
+            UserRating.user_id == user_id,
+            UserRating.book_id == book_id
+        )
+        result = await db.execute(query)
+        return result.scalars().first() is not None
+
+    @staticmethod
+    async def rate_book(db: AsyncSession, book_id: int, user_id: int, rating: float):
+        # Fetch book
+        db_book = await db.get(Book, book_id)
+        if not db_book:
+            return None
+
+        # Add user rating record
+        user_rating = UserRating(user_id=user_id, book_id=book_id, rating=rating)
+        db.add(user_rating)
+        await db.flush()
+
+        # Recalculate average rating for that book
+        avg_query = select(func.avg(UserRating.rating)).where(UserRating.book_id == book_id)
+        avg_result = await db.execute(avg_query)
+        avg_rating = avg_result.scalar() or 0.0
+
+        db_book.book_rating = round(avg_rating, 1)
+        db.add(db_book)
+        await db.commit()
+        await db.refresh(db_book)
+        return db_book

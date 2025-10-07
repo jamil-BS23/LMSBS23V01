@@ -52,6 +52,8 @@ class DonationBookCRUD:
             book_author=donation.book_author,
             book_category_id=donation.category_id,
             book_photo=donation.book_photo,
+            book_pdf=donation.book_pdf,
+            book_audio=donation.book_audio,
             book_details=donation.book_detail,
             book_count=donation.book_count,
         )
@@ -81,6 +83,8 @@ class DonationBookCRUD:
             book_author=donation.book_author,
             book_category_id=donation.category_id,
             book_photo=donation.book_photo,
+            book_pdf=donation.book_pdf,
+            book_audio=donation.book_audio,
             book_details=donation.book_detail,
             book_count=donation.book_count,
         )

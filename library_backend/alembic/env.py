@@ -5,7 +5,7 @@ import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app.database import Base
-from app.models import user, book, category, borrow, settings, donation_book  # noqa: F401
+from app.models import user, book, category, borrow, settings, donation_book, user_rating, book_review # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

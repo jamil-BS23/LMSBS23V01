@@ -1,4 +1,4 @@
-from operator import or_
+from sqlalchemy import and_, extract, or_
 from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -18,6 +18,93 @@ from sqlalchemy.exc import NoResultFound
 
 
 class BookCRUD:
+
+
+    # @staticmethod
+    # async def get_books_by_rating(
+    #     db: AsyncSession,
+    #     skip: int = 0,
+    #     limit: int = 20,
+    #     min_rating: float = None,
+    #     max_rating: float = None,
+    #     created_month: int = None,
+    #     created_year: int = None,
+    #     search: Optional[str] = None
+    # ):
+    #     stmt = select(Book)
+
+    #     # Rating filter
+    #     if min_rating is not None:
+    #         stmt = stmt.where(Book.book_rating >= min_rating)
+    #     if max_rating is not None:
+    #         stmt = stmt.where(Book.book_rating <= max_rating)
+
+    #     # Created month filter
+    #     if created_month is not None:
+    #         stmt = stmt.where(extract("month", Book.created_at) == created_month)
+    #     if created_year is not None:
+    #         stmt = stmt.where(extract("year", Book.created_at) == created_year)
+
+    #     # Search filter
+    #     if search:
+    #         search = search.strip()
+    #         if search:
+    #             pattern = f"%{search}%"
+    #             stmt = stmt.where(
+    #                 or_(
+    #                     Book.book_title.ilike(pattern),
+    #                     Book.book_author.ilike(pattern),
+    #                     Book.book_details.ilike(pattern)
+    #                 )
+    #             )
+
+    #     stmt = stmt.offset(skip).limit(limit)
+    #     result = await db.execute(stmt)
+    #     return result.scalars().all()
+
+    # @staticmethod
+    # async def get_books(
+    #     db: AsyncSession,
+    #     skip: int = 0,
+    #     limit: int = 20,
+    #     min_rating: float = None,
+    #     max_rating: float = None,
+    #     created_month: int = None,
+    #     created_year: int = None,
+    #     search: Optional[str] = None
+    # ):
+    #     stmt = select(Book)
+
+    #     # Rating filter
+    #     if min_rating is not None:
+    #         stmt = stmt.where(Book.book_rating >= min_rating)
+    #     if max_rating is not None:
+    #         stmt = stmt.where(Book.book_rating <= max_rating)
+
+    #     # Created month filter
+    #     if created_month is not None:
+    #         stmt = stmt.where(extract("month", Book.created_at) == created_month)
+    #     if created_year is not None:
+    #         stmt = stmt.where(extract("year", Book.created_at) == created_year)
+
+    #     # Search filter
+    #     if search:
+    #         search = search.strip()
+    #         if search:
+    #             pattern = f"%{search}%"
+    #             stmt = stmt.where(
+    #                 or_(
+    #                     Book.book_title.ilike(pattern),
+    #                     Book.book_author.ilike(pattern),
+    #                     Book.book_details.ilike(pattern)
+    #                 )
+    #             )
+
+    #     stmt = stmt.offset(skip).limit(limit)
+    #     result = await db.execute(stmt)
+    #     return result.scalars().all()
+
+
 
     @staticmethod
     async def get_book(db: AsyncSession, book_id: int):

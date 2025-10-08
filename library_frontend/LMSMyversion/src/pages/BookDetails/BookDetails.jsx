@@ -3,6 +3,8 @@
 // src/pages/BookDetails/BookDetails.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
+import BookRating from "../../components/BookRating/BookRating";
+
 import {
   Star,
   PlayCircle,
@@ -70,6 +72,7 @@ const REVIEWS_DB = {
   },
 };
 
+
 export default function BookDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -127,6 +130,9 @@ export default function BookDetails() {
     return { intro, tail };
   };
 
+
+
+
   const pickAudio = (b) =>
     b?.book_audio || b?.audioSrc || b?.audioLink || b?.audio_clip || b?.audioURL || null;
 
@@ -141,7 +147,7 @@ export default function BookDetails() {
           coverImage: b.book_photo || null,
   
           rating: b.book_rating ?? 0,
-          ratingCount: b.book_count ?? 0,
+          ratingCount: b.book_rating?? 0,
   
           // ✅ Correct availability logic
           status: b.book_count > 0 ? "Available" : "Not Available",
@@ -173,6 +179,8 @@ export default function BookDetails() {
       return "unavailable";
     return "available";
   };
+
+
 
   // === Prefer the clicked book from router state ===
  // === Prefer the clicked book from router state ===
@@ -481,6 +489,9 @@ setRelatedBooks(others);
     node.scrollBy({ left: step * dir, behavior: "smooth" });
   };
 
+
+
+
   return (
     <div className="bg-white py-8 sm:py-10 px-3 sm:px-6 lg:px-8">
       {/* Page grid */}
@@ -521,7 +532,7 @@ setRelatedBooks(others);
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             {renderStars(bookData.rating)}
             <span className="text-sm text-gray-600 font-semibold shrink-0">
-              {ratingCountDisplay} Ratings
+              {bookData.rating} Rating
             </span>
             <span className="text-gray-300 hidden sm:inline">|</span>
             <span className="text-sm text-gray-500">{reviewsTextDisplay}</span>
@@ -855,93 +866,45 @@ setRelatedBooks(others);
 
         {/* ===== REVIEWS & RATINGS ===== */}
         <div className="lg:col-span-2 mt-10">
-          <h3 className="text-2xl font-semibold text-gray-900">Reviews and Ratings</h3>
+          <h3 className="text-2xl font-semibold text-gray-900">Ratings</h3>
         </div>
 
         {/* LEFT SIDE: rate + reviews list */}
-        <div className="lg:col-span-1">
-          <div className="">
-            <div className="text-sm text-gray-700 font-semibold">Rate this product</div>
-            <div className="mt-2 flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-6 h-6 text-gray-300" />
-              ))}
-            </div>
-            <button className="mt-3 inline-flex items-center border border-gray-300 text-sky-600 text-sm font-medium px-3 py-1.5 rounded-md hover:bg-sky-50">
-              Review Write
-            </button>
-          </div>
+         {/* LEFT SIDE: rate + reviews list */}
+<div className="lg:col-span-1">
+  <div className="">
+    {/* ✅ Rating Component */}
+    <BookRating
+      bookId={bookData.id} // pass the current book ID
+      currentRating={bookData.book_rating || 0} // current user/average rating
+    />
 
-          {!pack || pack.total === 0 ? (
-            <div className="text-sm text-gray-500 mt-6">No reviews yet for this book.</div>
-          ) : (
-            <div className="space-y-6 mt-10 sm:mt-20">
-              {pack.reviews.map((r) => {
-                const isLong = (r.body || "").length > 220;
-                const open = !!expanded[r.id];
-                const body = !isLong || open ? r.body : r.body.slice(0, 220) + "…";
-                const firstLetter = r.name?.trim()?.[0]?.toUpperCase() || "?";
-                const v = votes[r.id] || { up: r.helpful || 0, down: 0, my: null };
-                return (
-                  <article key={r.id} className="border-b border-gray-300 pb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-700">
-                        {firstLetter}
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm">
-                          <span className="font-semibold text-gray-900">{r.name}</span>
-                          <span className="text-gray-500 ml-1.5">{r.country}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs mt-0.5 text-gray-500">
-                          {renderStars(r.stars)}
-                          <span className="ml-1 font-medium">{r.stars.toFixed(1)}</span>
-                          <span className="text-gray-300 mx-1">|</span>
-                          <time dateTime={r.date}>{r.date}</time>
-                        </div>
-                      </div>
-                    </div>
-                    <h4 className="font-semibold text-gray-800 mt-2">{r.title}</h4>
-                    {r.verified && (
-                      <div className="mt-1 flex items-center gap-1 text-xs text-green-700 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Verified Purchase
-                      </div>
-                    )}
-                    <p className="text-[15px] leading-7 text-gray-800 mt-2 whitespace-pre-line">
-                      {body}
-                      {isLong && (
-                        <button
-                          onClick={() => setExpanded((p) => ({ ...p, [r.id]: !p[r.id] }))}
-                          className="text-sky-600 hover:underline font-semibold ml-1 text-sm"
-                        >
-                          {open ? "Show Less" : "Read More"}
-                        </button>
-                      )}
-                    </p>
-                    <div className="mt-3 flex items-center gap-4 text-sm text-gray-600">
-                      <span className="text-xs">
-                        Was this helpful? <span className="text-gray-800 font-semibold">{v.up}</span>
-                      </span>
-                      <button
-                        onClick={() => vote(r.id, "up")}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-md transition ${v.my === "up" ? "text-sky-600 bg-sky-100" : "hover:bg-gray-100"}`}
-                      >
-                        <ThumbsUp className={`w-4 h-4 transition-transform ${bump[r.id]?.up ? 'scale-125' : ''}`} />
-                      </button>
-                      <button
-                        onClick={() => vote(r.id, "down")}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-md transition ${v.my === "down" ? "text-red-600 bg-red-100" : "hover:bg-gray-100"}`}
-                      >
-                        <ThumbsDown className={`w-4 h-4 transition-transform ${bump[r.id]?.down ? 'scale-125' : ''}`} />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </div>
+    {/* Optional: review write button (kept commented) */}
+    {/* <button className="mt-3 inline-flex items-center border border-gray-300 text-sky-600 text-sm font-medium px-3 py-1.5 rounded-md hover:bg-sky-50">
+      Review Write
+    </button> */}
+  </div>
+
+  {!pack || pack.total === 0 ? (
+    <div className="text-sm text-gray-500 mt-6">No reviews yet for this book.</div>
+  ) : (
+    <div className="space-y-6 mt-10 sm:mt-20">
+      {pack.reviews.map((r) => {
+        const isLong = (r.body || "").length > 220;
+        const open = !!expanded[r.id];
+        const body = !isLong || open ? r.body : r.body.slice(0, 220) + "…";
+        const firstLetter = r.name?.trim()?.[0]?.toUpperCase() || "?";
+        const v = votes[r.id] || { up: r.helpful || 0, down: 0, my: null };
+        return (
+          <article key={r.id} className="border-b border-gray-300 pb-6">
+            ...
+          </article>
+        );
+      })}
+    </div>
+  )}
+</div>
+
 
         {/* RIGHT SIDE: rating breakdown + images */}
         <div className="lg:col-span-1">

@@ -59,3 +59,7 @@ class BookUpdate(BaseModel):
     book_availability: Optional[bool] = None
     book_count: Optional[int] = None
 
+
+
+class RateBook(BaseModel):
+    rating: float

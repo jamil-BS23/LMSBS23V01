@@ -1,16 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
-
+from app.models.book import Book
 from app.crud.book import BookCRUD
-from app.schemas.book import BookPublic, BookDetail, BookCreate, BookUpdate
+from app.schemas.book import BookPublic, BookDetail, BookCreate, BookUpdate, RateBook
 from app.dependencies import get_db
 #from app.core.security import get_current_user, get_current_admin
 from app.dependencies import get_current_user, get_current_admin
 from app.models.user_rating import UserRating
+from app.crud.book_review import BookReviewCRUD
+from app.schemas.book_review import BookReviewCreate, BookReviewOut
 
 from app.utils.minio_utils import upload_file
 from typing import Dict
+from sqlalchemy import select, and_, extract
+from datetime import datetime
+
 
 
 
@@ -42,7 +47,7 @@ async def count_books(db: AsyncSession = Depends(get_db)) -> Dict[str, int]:
     return {"count": total}
 
 
-@router.get("/all", response_model=List[BookDetail], tags=["Admin Books"], dependencies=[Depends(get_current_admin)])
+@router.get("/all", response_model=List[BookDetail], tags=["Admin Books"], dependencies=[Depends(get_current_user)])
 async def list_all_books(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
@@ -100,6 +105,64 @@ async def create_book(
 
 
 
+@router.get("/recommended", response_model=List[BookDetail], tags=["Books"])
+async def get_recommended_books(
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100)
+):
+    skip = (page - 1) * page_size
+    stmt = (
+        select(Book)
+        .where(Book.book_rating.between(2.0, 3.0))
+        .offset(skip)
+        .limit(page_size)
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+@router.get("/popular", response_model=List[BookDetail], tags=["Books"])
+async def get_popular_books(
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100)
+):
+    skip = (page - 1) * page_size
+    stmt = (
+        select(Book)
+        .where(Book.book_rating.between(4.0, 5.0))
+        .offset(skip)
+        .limit(page_size)
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+@router.get("/new", response_model=List[BookDetail], tags=["Books"])
+async def get_new_books(
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100)
+):
+    skip = (page - 1) * page_size
+    current_month = datetime.utcnow().month
+    current_year = datetime.utcnow().year
+
+    stmt = (
+        select(Book)
+        .where(
+            and_(
+                extract("month", Book.created_at) == current_month,
+                extract("year", Book.created_at) == current_year
+            )
+        )
+        .offset(skip)
+        .limit(page_size)
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
 
 @router.get("/{book_id}", response_model=BookDetail, tags=["Public Books"])
 async def book_details(book_id: int, db: AsyncSession = Depends(get_db)):
@@ -127,19 +190,19 @@ async def delete_book(book_id: int, db: AsyncSession = Depends(get_db)):
     return
 
 
+
+
 @router.patch("/{book_id}/rate", response_model=BookDetail, tags=["Books"])
 async def rate_book(
     book_id: int,
-    rating: float,
+    data: RateBook,  # <- Expect JSON body
     db: AsyncSession = Depends(get_db),
     current_user: int = Depends(get_current_user)
 ):
-    # 1️⃣ Check book exists
     book = await db.get(Book, book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    # 2️⃣ Check if user already rated
     existing_rating = await db.execute(
         select(UserRating).where(
             UserRating.user_id == current_user.user_id,
@@ -150,20 +213,35 @@ async def rate_book(
     if existing_rating:
         raise HTTPException(status_code=400, detail="You have already rated this book")
 
-    # 3️⃣ Create new rating
-    new_rating = UserRating(user_id=current_user.user_id, book_id=book_id, rating=rating)
+    new_rating = UserRating(user_id=current_user.user_id, book_id=book_id, rating=data.rating)
     db.add(new_rating)
 
-    # 4️⃣ Update book average rating
-    # Fetch all ratings for this book including the new one
     all_ratings = await db.execute(
         select(UserRating.rating).where(UserRating.book_id == book_id)
     )
-    all_ratings = [r[0] for r in all_ratings.fetchall()] + [rating]  # include new rating
-    book.book_rating = round(sum(all_ratings)/len(all_ratings), 1)
+    all_ratings = [float(r[0]) for r in all_ratings.fetchall()] + [float(data.rating)]
+    book.book_rating = round(sum(all_ratings) / len(all_ratings), 1)
 
     db.add(book)
     await db.commit()
     await db.refresh(book)
 
     return book
+
+
+
+@router.post("/books/{book_id}/review", response_model=BookReviewOut)
+async def add_review(
+    book_id: int,
+    review: BookReviewCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    return await BookReviewCRUD.create_review(db, current_user.user_id, book_id, review.review_text)
+
+@router.get("/books/{book_id}/reviews", response_model=list[BookReviewOut])
+async def get_book_reviews(
+    book_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    return await BookReviewCRUD.get_reviews(db, book_id)

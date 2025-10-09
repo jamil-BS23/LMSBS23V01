@@ -4,6 +4,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import BookRating from "../../components/BookRating/BookRating";
+import BookReviews from "../../components/BookReviews/BookReviews";
+
 
 import {
   Star,
@@ -21,6 +23,9 @@ import {
 } from "lucide-react";
 import BookCard from "../../components/BookCard/BookCard";
 import api from "../../config/api";
+
+
+
 
 /** Demo reviews DB (unchanged) */
 const REVIEWS_DB = {
@@ -81,6 +86,8 @@ export default function BookDetails() {
   const [bookData, setBookData] = useState(null);
   const [relatedBooks, setRelatedBooks] = useState([]);
   const [stats, setStats] = useState({ available: 0, upcoming: 0, unavailable: 0 });
+  const [loading, setLoading] = useState(true);
+
 
   // Spec & Summary state
   const [pdTab, setPdTab] = useState("summary");
@@ -91,6 +98,8 @@ export default function BookDetails() {
   const readBoxRef = useRef(null);
   const audioRef = useRef(null);
   const relRowRef = useRef(null);
+
+
 
   // Author follow modal/state
   const [showFollowModal, setShowFollowModal] = useState(false);
@@ -113,6 +122,48 @@ export default function BookDetails() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [curTime, setCurTime] = useState(0);
   const [duration, setDuration] = useState(0);
+
+
+
+
+    // ====== Review form state ======
+    const [newReview, setNewReview] = useState("");
+    const [newRating, setNewRating] = useState(5);
+  
+    // ====== Submit review handler ======
+    const submitReview = async () => {
+      if (!newReview.trim()) {
+        alert("Please write a review before submitting.");
+        return;
+      }
+    
+      try {
+        if (!bookData?.id) throw new Error("Book ID is missing.");
+    
+        // ✅ Send correct payload
+        const res = await api.post(`/books/books/${bookData.id}/review`, {
+          book_id: bookData.id,
+          review_text: newReview,
+        });
+    
+        // ✅ Optimistically update local reviews (optional)
+        const newReviewObj = {
+          ...res.data,
+          name: "You",
+          date: new Date().toLocaleDateString(),
+        };
+    
+        setReviews((prev) => [newReviewObj, ...prev]); // if you have review state
+        setNewReview("");
+        alert("Review submitted successfully!");
+      } catch (err) {
+        console.error(err);
+        alert("Failed to submit review. Try again.");
+      }
+    };
+    
+    
+
 
   // ---------- utils ----------
   const splitSentences = (txt = "") =>
@@ -143,7 +194,8 @@ export default function BookDetails() {
           id: b.book_id,
           title: b.book_title,
           authors: b.book_author || "Unknown",
-          category: b.book_category_id || "General",
+          category: b.category_title || "General",
+          categoryid: b.category_id,
           coverImage: b.book_photo || null,
   
           rating: b.book_rating ?? 0,
@@ -184,6 +236,122 @@ export default function BookDetails() {
 
   // === Prefer the clicked book from router state ===
  // === Prefer the clicked book from router state ===
+// useEffect(() => {
+//   const sliderBook = location.state?.fromSlider;
+
+//   async function fetchData() {
+//     try {
+//       // 1️⃣ Get all books from backend
+//       const allRes = await fetch(
+//         `${import.meta.env.VITE_API_BASE_URL}/books/all`
+//       );
+//       const allBooks = await allRes.json();
+//       console.log(allBooks);
+
+//       // 2️⃣ Determine the active (clicked) book
+//       let active = null;
+//       if (sliderBook && String(sliderBook.id) === String(id)) {
+//         active = sliderBook;
+//       } else {
+//         // get single book if not from slider
+//         const singleRes = await fetch(
+//           `${import.meta.env.VITE_API_BASE_URL}/books/${id}`
+//         );
+//         if (singleRes.ok) {
+//           const singleBook = await singleRes.json();
+//           active = singleBook;
+//         }
+//       }
+
+//       // 3️⃣ Set book data
+//       if (active) {
+//         const n = normalize(active);
+//         setBookData(n);
+//         setAuthorFollowers(n.authorFollowers);
+//       } else {
+//         setBookData(null);
+//       }
+
+//       // // 4️⃣ Related books
+//       // const others = (allBooks || [])
+//       //   .filter((b) => String(b.book_id) !== String(id)) // exclude current book
+//       //   .filter((b) => Number(b.book_category_id)== Number(b.category_id))// same category
+//       //   .slice(0, 3)
+//       //   .map(normalize)
+//       //   .filter(Boolean);
+//       // setRelatedBooks(others);
+
+
+//       // 4️⃣ Related books by category
+// // const others = (allBooks || [])
+// //  // exclude current book
+// // filter(
+// //   (b) =>
+// //     Number(b.category_id) === Number(active?.categoryid) // match category
+// // )
+// // .slice(0, 3) // limit to 3 related books
+// // .map(normalize)
+// // .filter(Boolean);
+
+// // setRelatedBooks(others);
+
+      
+//       // 4️⃣ Related books by category — prefer backend API, fallback to local filter
+//       if (active?.categoryid) {
+//         try {
+        
+//           const resp = await api.get(`/books/books/${active.category_id}`, {
+//             params: { page: 1, page_size: 6 },
+//           });
+
+//           const relatedFromApi = (resp.data || [])
+//             .filter((b) => Number(b.book_id) !== Number(active.book_id)) // exclude current
+//             .slice(0, 6) // keep max
+//             .map(normalize)
+//             .filter(Boolean);
+
+//           setRelatedBooks(relatedFromApi);
+//         } catch (err) {
+//           console.error("Failed to fetch related books from API, falling back to local list:", err);
+
+//           // fallback to local filtering if API call fails
+//           const others = (allBooks || [])
+//             .filter((b) => Number(b.category_id) === Number(active?.category_id))
+//             .slice(0, 3)
+//             .map(normalize)
+//             .filter(Boolean);
+
+//           setRelatedBooks(others);
+//         }
+//       } else {
+//         setRelatedBooks([]);
+//       }
+
+
+
+      
+
+//       // 5️⃣ Category stats
+//       const targetCategory = (active?.book_category_id ?? "General").toLowerCase();
+//       const totals = (allBooks || []).reduce(
+//         (acc, b) => {
+//           if ((b.book_category_id ?? "General").toLowerCase() !== targetCategory)
+//             return acc;
+//           acc[bucket(b.book_availability ? "Available" : "Not Available")] += 1;
+//           return acc;
+//         },
+//         { available: 0, upcoming: 0, unavailable: 0 }
+//       );
+//       setStats(totals);
+//     } catch (err) {
+//       console.error("Error fetching book data:", err);
+//     }
+//   }
+
+//   fetchData();
+// }, [id, location.state]);
+
+
 useEffect(() => {
   const sliderBook = location.state?.fromSlider;
 
@@ -220,31 +388,43 @@ useEffect(() => {
         setBookData(null);
       }
 
-      // // 4️⃣ Related books
-      // const others = (allBooks || [])
-      //   .filter((b) => String(b.book_id) !== String(id)) // exclude current book
-      //   .filter((b) => Number(b.book_category_id)== Number(b.category_id))// same category
-      //   .slice(0, 3)
-      //   .map(normalize)
-      //   .filter(Boolean);
-      // setRelatedBooks(others);
+      // 4️⃣ Related books by category — prefer backend API, fallback to local filter
+      if (active?.categoryid) {
+        try {
+          // Correct backend route: /books/category/{category_id}
+          const resp = await api.get(`/books/books/${active.categoryid}`, {
+            params: { page: 1, page_size: 6 },
+          });
 
+          const relatedFromApi = (resp.data || [])
+            .filter((b) => Number(b.book_id) !== Number(active.id)) // exclude current
+            .slice(0, 6) // limit max
+            .map(normalize)
+            .filter(Boolean);
 
-      // 4️⃣ Related books by category
-const others = (allBooks || [])
- // exclude current book
-filter(
-  (b) =>
-    Number(b.book_category_id) === Number(active?.book_category_id) // match category
-)
-.slice(0, 3) // limit to 3 related books
-.map(normalize)
-.filter(Boolean);
+          setRelatedBooks(relatedFromApi);
+        } catch (err) {
+          console.error(
+            "Failed to fetch related books from API, falling back to local list:",
+            err
+          );
 
-setRelatedBooks(others);
+          // fallback: filter local allBooks by category_id
+          const others = (allBooks || [])
+            .filter(
+              (b) =>
+                Number(b.book_category_id) === Number(active.categoryid) &&
+                Number(b.book_id) !== Number(active.id)
+            )
+            .slice(0, 6)
+            .map(normalize)
+            .filter(Boolean);
 
-
-      
+          setRelatedBooks(others);
+        }
+      } else {
+        setRelatedBooks([]);
+      }
 
       // 5️⃣ Category stats
       const targetCategory = (active?.book_category_id ?? "General").toLowerCase();
@@ -265,6 +445,7 @@ setRelatedBooks(others);
 
   fetchData();
 }, [id, location.state]);
+
 
 
   // init votes when book changes
@@ -333,6 +514,12 @@ setRelatedBooks(others);
       if (bookData?.audioSrc) audioRef.current.load();
     }
   }, [bookData?.audioSrc]);
+
+
+
+
+
+
 
   const toggleAudio = () => {
     const el = audioRef.current;
@@ -522,7 +709,7 @@ setRelatedBooks(others);
             {bookData.publisher}, {bookData.publishDate} —{" "}
             <Link
               to="/all-genres"
-              state={{ filter: { type: "category", value: bookData.category } }}
+              state={{ filter: { type: "category", value: bookData.categoryid } }}
               className="text-sky-600 hover:underline"
             >
               {bookData.category}
@@ -879,31 +1066,21 @@ setRelatedBooks(others);
       currentRating={bookData.book_rating || 0} // current user/average rating
     />
 
+     {/* ✅ Reviews List + Add Review Form */}
+  <BookReviews bookId={bookData.id} />
+
+    
+
     {/* Optional: review write button (kept commented) */}
     {/* <button className="mt-3 inline-flex items-center border border-gray-300 text-sky-600 text-sm font-medium px-3 py-1.5 rounded-md hover:bg-sky-50">
       Review Write
     </button> */}
   </div>
 
-  {!pack || pack.total === 0 ? (
-    <div className="text-sm text-gray-500 mt-6">No reviews yet for this book.</div>
-  ) : (
-    <div className="space-y-6 mt-10 sm:mt-20">
-      {pack.reviews.map((r) => {
-        const isLong = (r.body || "").length > 220;
-        const open = !!expanded[r.id];
-        const body = !isLong || open ? r.body : r.body.slice(0, 220) + "…";
-        const firstLetter = r.name?.trim()?.[0]?.toUpperCase() || "?";
-        const v = votes[r.id] || { up: r.helpful || 0, down: 0, my: null };
-        return (
-          <article key={r.id} className="border-b border-gray-300 pb-6">
-            ...
-          </article>
-        );
-      })}
-    </div>
-  )}
+  
 </div>
+
+
 
 
         {/* RIGHT SIDE: rating breakdown + images */}

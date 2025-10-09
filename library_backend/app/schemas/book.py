@@ -21,6 +21,26 @@ class BookDetail(BaseModel):
     book_title: str
     book_author: str
     book_category_id: int
+    category_title: Optional[str]
+    book_rating: float
+    book_photo: Optional[HttpUrl]
+    book_pdf: Optional[HttpUrl]
+    book_audio: Optional[HttpUrl]
+    book_details: Optional[str]
+    book_availability: bool = Field(..., alias="book_availability")
+    book_count: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+
+class BookDetail2(BaseModel):
+    book_id: int
+    book_title: str
+    book_author: str
+    book_category_id: int
     book_rating: float
     book_photo: Optional[HttpUrl]
     book_pdf: Optional[HttpUrl]

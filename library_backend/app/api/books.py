@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from app.models.book import Book
 from app.crud.book import BookCRUD
-from app.schemas.book import BookPublic, BookDetail, BookCreate, BookUpdate, RateBook
+from app.schemas.book import BookPublic, BookDetail, BookCreate, BookUpdate, RateBook, BookDetail2
 from app.dependencies import get_db
 #from app.core.security import get_current_user, get_current_admin
 from app.dependencies import get_current_user, get_current_admin
@@ -105,7 +105,7 @@ async def create_book(
 
 
 
-@router.get("/recommended", response_model=List[BookDetail], tags=["Books"])
+@router.get("/recommended", response_model=List[BookDetail2], tags=["Books"])
 async def get_recommended_books(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
@@ -122,7 +122,7 @@ async def get_recommended_books(
     return result.scalars().all()
 
 
-@router.get("/popular", response_model=List[BookDetail], tags=["Books"])
+@router.get("/popular", response_model=List[BookDetail2], tags=["Books"])
 async def get_popular_books(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
@@ -139,7 +139,7 @@ async def get_popular_books(
     return result.scalars().all()
 
 
-@router.get("/new", response_model=List[BookDetail], tags=["Books"])
+@router.get("/new", response_model=List[BookDetail2], tags=["Books"])
 async def get_new_books(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
@@ -162,6 +162,28 @@ async def get_new_books(
     )
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+
+
+@router.get("/books/{category_id}", response_model=List[BookDetail], tags=["Public Books"])
+async def list_books_by_category(
+    category_id: int,
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100)
+):
+    """
+    Fetch all books by a specific category ID.
+    Supports pagination and returns category title.
+    """
+    skip = (page - 1) * page_size
+    books = await BookCRUD.get_books_by_category(db, category_id, skip=skip, limit=page_size)
+    return books
+
+
+
+
 
 
 @router.get("/{book_id}", response_model=BookDetail, tags=["Public Books"])
@@ -238,6 +260,9 @@ async def add_review(
     current_user=Depends(get_current_user)
 ):
     return await BookReviewCRUD.create_review(db, current_user.user_id, book_id, review.review_text)
+
+
+
 
 @router.get("/books/{book_id}/reviews", response_model=list[BookReviewOut])
 async def get_book_reviews(

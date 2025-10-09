@@ -106,10 +106,27 @@ class BookCRUD:
 
 
 
+    # @staticmethod
+    # async def get_book(db: AsyncSession, book_id: int):
+    #     result = await db.execute(select(Book).where(Book.book_id == book_id))
+    #     return result.scalar_one_or_none()
+
+
     @staticmethod
     async def get_book(db: AsyncSession, book_id: int):
-        result = await db.execute(select(Book).where(Book.book_id == book_id))
-        return result.scalar_one_or_none()
+        result = await db.execute(
+            select(Book, Category.category_title)
+            .join(Category, Category.category_id == Book.book_category_id)
+            .where(Book.book_id == book_id)
+        )
+        row = result.first()
+        if not row:
+            return None
+        
+        book, category_title = row
+        # Attach category_title to the book object
+        book.category_title = category_title
+        return book
 
 
         
@@ -271,3 +288,23 @@ class BookCRUD:
         await db.commit()
         await db.refresh(db_book)
         return db_book
+
+
+
+
+
+    @staticmethod
+    async def get_books_by_category(db: AsyncSession, category_id: int, skip: int = 0, limit: int = 20):
+        result = await db.execute(
+            select(Book, Category.category_title)
+            .join(Category, Category.category_id == Book.book_category_id)
+            .where(Book.book_category_id == category_id)
+            .offset(skip)
+            .limit(limit)
+        )
+        rows = result.all()
+        books = []
+        for book, category_title in rows:
+            book.category_title = category_title
+            books.append(book)
+        return books

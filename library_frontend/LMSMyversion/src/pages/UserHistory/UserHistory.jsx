@@ -38,7 +38,7 @@ export default function UserHistory() {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const res = await api.get("/borrow/borrow/");
+        const res = await api.get("/borrow/borrow/my");
         const mapped = (res.data || []).map((b) => ({
           id: `BRW-${b.borrow_id}`,
           borrow_id: b.borrow_id,

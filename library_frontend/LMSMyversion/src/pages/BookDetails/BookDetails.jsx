@@ -195,7 +195,7 @@ export default function BookDetails() {
           title: b.book_title,
           authors: b.book_author || "Unknown",
           category: b.category_title || "General",
-          categoryid: b.category_id,
+          categoryid: b.book_category_id,
           coverImage: b.book_photo || null,
   
           rating: b.book_rating ?? 0,
@@ -233,6 +233,7 @@ export default function BookDetails() {
   };
 
 
+  const [active, setActive] = useState(null);
 
   // === Prefer the clicked book from router state ===
  // === Prefer the clicked book from router state ===
@@ -355,6 +356,7 @@ export default function BookDetails() {
 useEffect(() => {
   const sliderBook = location.state?.fromSlider;
 
+
   async function fetchData() {
     try {
       // 1️⃣ Get all books from backend
@@ -362,7 +364,8 @@ useEffect(() => {
         `${import.meta.env.VITE_API_BASE_URL}/books/all`
       );
       const allBooks = await allRes.json();
-      console.log(allBooks);
+      console.log("All books response:", allBooks);
+      console.log("Is allBooks an array?", Array.isArray(allBooks));
 
       // 2️⃣ Determine the active (clicked) book
       let active = null;
@@ -387,17 +390,20 @@ useEffect(() => {
       } else {
         setBookData(null);
       }
-
+      
+      console.log("Active book data:", active);
+      console.log("Category ID:", active?.book_category_id);
       // 4️⃣ Related books by category — prefer backend API, fallback to local filter
       if (active?.categoryid) {
         try {
-          // Correct backend route: /books/category/{category_id}
-          const resp = await api.get(`/books/books/${active.categoryid}`, {
+          // Correct backend route: /books/books/{category_id}
+          console.log("Making API call to:", `/books/books/${active.book_category_id}`);
+          const resp = await api.get(`/books/books/${active.book_category_id}`, {
             params: { page: 1, page_size: 6 },
           });
 
           const relatedFromApi = (resp.data || [])
-            .filter((b) => Number(b.book_id) !== Number(active.id)) // exclude current
+            .filter((b) => Number(b.book_id) !== Number(active.book_id)) // exclude current
             .slice(0, 6) // limit max
             .map(normalize)
             .filter(Boolean);
@@ -408,13 +414,19 @@ useEffect(() => {
             "Failed to fetch related books from API, falling back to local list:",
             err
           );
+          console.error("API Error details:", {
+            message: err.message,
+            response: err.response?.data,
+            status: err.response?.status,
+            url: err.config?.url
+          });
 
           // fallback: filter local allBooks by category_id
           const others = (allBooks || [])
             .filter(
               (b) =>
-                Number(b.book_category_id) === Number(active.categoryid) &&
-                Number(b.book_id) !== Number(active.id)
+                Number(b.book_category_id) === Number(active.book_category_id) &&
+                Number(b.book_id) !== Number(active.book_id)
             )
             .slice(0, 6)
             .map(normalize)
@@ -427,10 +439,11 @@ useEffect(() => {
       }
 
       // 5️⃣ Category stats
-      const targetCategory = (active?.book_category_id ?? "General").toLowerCase();
-      const totals = (allBooks || []).reduce(
+      const targetCategory = String(active?.book_category_id ?? "General").toLowerCase();
+      const booksArray = Array.isArray(allBooks) ? allBooks : [];
+      const totals = booksArray.reduce(
         (acc, b) => {
-          if ((b.book_category_id ?? "General").toLowerCase() !== targetCategory)
+          if (String(b.book_category_id ?? "General").toLowerCase() !== targetCategory)
             return acc;
           acc[bucket(b.book_availability ? "Available" : "Not Available")] += 1;
           return acc;
@@ -764,7 +777,7 @@ useEffect(() => {
               <button
                 type="button"
                 onClick={toggleAudio}
-                enabled={!bookData.audioSrc}
+                disabled={!bookData.audioSrc}
                 className={`flex items-center gap-2 text-sm ${
                   bookData.audioSrc
                     ? "text-gray-700 hover:text-sky-600"

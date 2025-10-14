@@ -129,33 +129,85 @@ class BookCRUD:
         return book
 
 
-        
-    @staticmethod
-    async def get_books(db: AsyncSession, skip: int = 0, limit: int = 20, search: Optional[str] = None):
-        """
-        Return books with optional search. Searches title, author and details (case-insensitive).
-        """
-        stmt = select(Book)
 
-        # normalize search: None if empty/only-spaces
+
+    @staticmethod
+    async def get_books(
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 20,
+        search: Optional[str] = None
+    ):
+        """
+        Return books with optional search. Each book will also include its category_title.
+        Searches title, author, and details (case-insensitive).
+        """
+        stmt = (
+            select(Book, Category.category_title)
+            .join(Category, Category.category_id == Book.book_category_id)
+        )
+
+    # Normalize search: None if empty or only spaces
         if search is not None:
             search = search.strip()
             if search == "":
                 search = None
 
+    # Apply search condition
         if search:
             pattern = f"%{search}%"
             stmt = stmt.where(
                 or_(
                     Book.book_title.ilike(pattern),
                     Book.book_author.ilike(pattern),
-                    Book.book_details.ilike(pattern)   
+                    Book.book_details.ilike(pattern),
                 )
             )
 
+    # Add pagination
         stmt = stmt.offset(skip).limit(limit)
+
+    # Execute query
         result = await db.execute(stmt)
-        return result.scalars().all()
+        rows = result.all()
+
+    # Transform results: attach category_title to each book
+        books = []
+        for book, category_title in rows:
+            book.category_title = category_title
+            books.append(book)
+
+        return books
+
+        
+    # @staticmethod
+    # async def get_books(db: AsyncSession, skip: int = 0, limit: int = 20, search: Optional[str] = None):
+    #     """
+    #     Return books with optional search. Searches title, author and details (case-insensitive).
+    #     """
+    #     stmt = select(Book)
+
+    #     # normalize search: None if empty/only-spaces
+    #     if search is not None:
+    #         search = search.strip()
+    #         if search == "":
+    #             search = None
+
+    #     if search:
+    #         pattern = f"%{search}%"
+    #         stmt = stmt.where(
+    #             or_(
+    #                 Book.book_title.ilike(pattern),
+    #                 Book.book_author.ilike(pattern),
+    #                 Book.book_details.ilike(pattern)   
+    #             )
+    #         )
+
+    #     stmt = stmt.offset(skip).limit(limit)
+    #     result = await db.execute(stmt)
+    #     return result.scalars().all()
+
+             
 
 
 

@@ -1,162 +1,18 @@
 
-// import React, { useEffect, useState } from "react";
-// import axios from "axios";
-// import "./Home.css";
-
-// export default function Home() {
-//   const [recommendedBooks, setRecommendedBooks] = useState([]);
-//   const [popularBooks, setPopularBooks] = useState([]);
-//   const [newBooks, setNewBooks] = useState([]);
-//   const [loading, setLoading] = useState(true);
-
-//   const API_BASE = "http://127.0.0.1:8000/books"; // Update if backend URL changes
-
-//   // ✅ Fetch all 3 book categories
-//   useEffect(() => {
-//     const fetchBooks = async () => {
-//       try {
-//         const [recommendedRes, popularRes, newRes] = await Promise.all([
-//           axios.get(`${API_BASE}/recommended?page=1&page_size=20`),
-//           axios.get(`${API_BASE}/popular?page=1&page_size=20`),
-//           axios.get(`${API_BASE}/new?page=1&page_size=20`),
-//         ]);
-//         setRecommendedBooks(recommendedRes.data);
-//         setPopularBooks(popularRes.data);
-//         setNewBooks(newRes.data);
-//       } catch (error) {
-//         console.error("Error fetching books:", error);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     fetchBooks();
-//   }, []);
-
-//   // ⭐ Render star rating like BookDetails page
-//   const renderStars = (rating) => {
-//     const stars = [];
-//     const roundedRating = Math.round(rating); // handle float ratings properly
-//     for (let i = 1; i <= 5; i++) {
-//       stars.push(
-//         <span key={i} style={{ color: i <= roundedRating ? "#FFD700" : "#ccc" }}>
-//           ★
-//         </span>
-//       );
-//     }
-//     return stars;
-//   };
-
-//   if (loading) {
-//     return <div className="loading">Loading book collections...</div>;
-//   }
-
-//   return (
-//     <div className="home-container">
-//       {/* 🔹 Recommended Section */}
-//       <section className="book-section">
-//         <h2>📚 Recommended Books</h2>
-//         <div className="book-grid">
-//           {recommendedBooks.length > 0 ? (
-//             recommendedBooks.map((book) => (
-//               <div key={book.book_id} className="book-card">
-//                 <img
-//                   src={book.book_photo || "/default-book.jpg"}
-//                   alt={book.book_title}
-//                   className="book-img"
-//                 />
-//                 <h3>{book.book_title}</h3>
-//                 <p>by {book.book_author}</p>
-//                 <div className="book-rating">
-//                   {renderStars(book.book_rating)}
-//                   <span className="rating-value">({book.book_rating})</span>
-//                 </div>
-//               </div>
-//             ))
-//           ) : (
-//             <p>No recommended books found.</p>
-//           )}
-//         </div>
-//       </section>
-
-//       {/* 🔹 Popular Section */}
-//       <section className="book-section">
-//         <h2>🔥 Popular Books</h2>
-//         <div className="book-grid">
-//           {popularBooks.length > 0 ? (
-//             popularBooks.map((book) => (
-//               <div key={book.book_id} className="book-card">
-//                 <img
-//                   src={book.book_photo || "/default-book.jpg"}
-//                   alt={book.book_title}
-//                   className="book-img"
-//                 />
-//                 <h3>{book.book_title}</h3>
-//                 <p>by {book.book_author}</p>
-//                 <div className="book-rating">
-//                   {renderStars(book.book_rating)}
-//                   <span className="rating-value">({book.book_rating})</span>
-//                 </div>
-//               </div>
-//             ))
-//           ) : (
-//             <p>No popular books found.</p>
-//           )}
-//         </div>
-//       </section>
-
-//       {/* 🔹 New Books Section */}
-//       <section className="book-section">
-//         <h2>🆕 New Books</h2>
-//         <div className="book-grid">
-//           {newBooks.length > 0 ? (
-//             newBooks.map((book) => (
-//               <div key={book.book_id} className="book-card">
-//                 <img
-//                   src={book.book_photo || "/default-book.jpg"}
-//                   alt={book.book_title}
-//                   className="book-img"
-//                 />
-//                 <h3>{book.book_title}</h3>
-//                 <p>by {book.book_author}</p>
-//                 <div className="book-rating">
-//                   {renderStars(book.book_rating)}
-//                   <span className="rating-value">({book.book_rating})</span>
-//                 </div>
-//               </div>
-//             ))
-//           ) : (
-//             <p>No new books found.</p>
-//           )}
-//         </div>
-//       </section>
-//     </div>
-//   );
-// }
-
-
 
 // src/pages/Home/Home.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import Sidebar from "../../components/Sidebar/Sidebar";
 import Navbar from "../../components/Navbar/Navbar";
 import FeaturedBanner from "../../components/FeaturedBanner/FeaturedBanner";
-import NewBookCollections from "../../components/NewBookCollections/NewBookCollections";
 import { useNavigate } from "react-router-dom";
-import {
-  Star,
-  Filter,
-  X,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import BookCard from "../../components/BookCard/BookCard";
 import axios from "axios";
 
 export default function Home() {
   const [filter, setFilter] = useState(null);
   const [openFilters, setOpenFilters] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState(null);
 
   const [recommendedBooks, setRecommendedBooks] = useState([]);
   const [popularBooks, setPopularBooks] = useState([]);
@@ -177,7 +33,7 @@ export default function Home() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const baseUrl = "http://127.0.0.1:8000/books"; // ⚙️ Change base if needed
+        const baseUrl = "http://127.0.0.1:8000/books"; // ✅ kept exactly as your original
 
         const [recRes, popRes, newRes] = await Promise.all([
           axios.get(`${baseUrl}/recommended?page=1&page_size=10`),
@@ -199,30 +55,52 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // Helpers
-  const getStatus = (b) => {
-    const raw = (b.status || b.stock || "").toString().trim().toLowerCase();
+  // Helper to get category id/title safely
+  const getBookCategoryId = (b) =>
+    b?.book_category_id ??
+    b?.category_id ??
+    (b?.book_category && (b.book_category.category_id ?? b.book_category.id)) ??
+    null;
 
-    if (raw === "available") return "Available";
-    if (raw === "stock out" || raw === "out of stock" || raw === "out")
-      return "Stock Out";
-    if (raw === "upcoming" || raw === "coming soon") return "Upcoming";
+  const getBookCategoryTitle = (b) =>
+    b?.category_title ??
+    (b?.book_category && (b.book_category.category_title ?? b.book_category.title)) ??
+    null;
 
-    return "Available";
+  // ===== Filter logic like AllGenres.jsx =====
+  const applyFilter = (books) => {
+    if (!filter) return books;
+    if (filter.type !== "category") return books;
+
+    const fv = filter.value;
+    const fvNum = Number(fv);
+    const useIdCompare = !Number.isNaN(fvNum) && String(fv).trim() !== "";
+
+    return books.filter((b) => {
+      const bookCatId = getBookCategoryId(b);
+      const bookCatTitle = getBookCategoryTitle(b);
+
+      if (useIdCompare) {
+        return bookCatId != null && Number(bookCatId) === fvNum;
+      } else {
+        const left = (bookCatTitle ?? b.category ?? "").toString().toLowerCase();
+        const right = (fv ?? "").toString().toLowerCase();
+        return left === right;
+      }
+    });
   };
 
-  const statusClasses = (status) => {
-    const s = (status || "").toLowerCase();
-    if (s === "available") return "text-green-600";
-    if (s === "stock out") return "text-red-500";
-    if (s === "upcoming") return "text-amber-600";
-    return "text-gray-600";
-  };
+  const filteredRecommended = useMemo(
+    () => applyFilter(recommendedBooks),
+    [filter, recommendedBooks]
+  );
+  const filteredPopular = useMemo(
+    () => applyFilter(popularBooks),
+    [filter, popularBooks]
+  );
+  const filteredNew = useMemo(() => applyFilter(newBooks), [filter, newBooks]);
 
   const goTo = (id) => navigate(`/book/${id}`);
-  const handleRowScroll = () => {
-    if (openMenuId !== null) setOpenMenuId(null);
-  };
 
   const scrollByAmount = (node, dir = 1) => {
     if (!node?.current) return;
@@ -264,9 +142,8 @@ export default function Home() {
             {/* ======== RECOMMENDED ======== */}
             <BookSection
               title="Recommended"
-              data={recommendedBooks}
+              data={filteredRecommended}
               refNode={recRowRef}
-              onScroll={handleRowScroll}
               onClickBook={goTo}
               scrollByAmount={scrollByAmount}
             />
@@ -274,9 +151,8 @@ export default function Home() {
             {/* ======== POPULAR ======== */}
             <BookSection
               title="Popular"
-              data={popularBooks}
+              data={filteredPopular}
               refNode={popRowRef}
-              onScroll={handleRowScroll}
               onClickBook={goTo}
               scrollByAmount={scrollByAmount}
             />
@@ -284,9 +160,8 @@ export default function Home() {
             {/* ======== NEW COLLECTION ======== */}
             <BookSection
               title="New Book Collections"
-              data={newBooks}
+              data={filteredNew}
               refNode={newRowRef}
-              onScroll={handleRowScroll}
               onClickBook={goTo}
               scrollByAmount={scrollByAmount}
             />
@@ -331,14 +206,7 @@ export default function Home() {
 }
 
 // ✅ Reusable Book Section component
-function BookSection({
-  title,
-  data,
-  refNode,
-  onScroll,
-  onClickBook,
-  scrollByAmount,
-}) {
+function BookSection({ title, data, refNode, onClickBook, scrollByAmount }) {
   return (
     <div className="mb-8 rounded-lg border border-gray-300 overflow-hidden">
       <div className="px-4 py-3 bg-white flex items-center justify-between">
@@ -364,11 +232,7 @@ function BookSection({
       </div>
 
       <div className="border-t border-gray-200 relative bg-white">
-        <div
-          ref={refNode}
-          onScroll={onScroll}
-          className="overflow-x-auto no-scrollbar"
-        >
+        <div ref={refNode} className="overflow-x-auto no-scrollbar">
           <div className="flex gap-5 p-3 sm:p-4 snap-x snap-mandatory">
             {data.length === 0 ? (
               <p className="text-gray-500 text-sm">No books found.</p>
@@ -379,13 +243,12 @@ function BookSection({
                   book={{
                     ...b,
                     coverImage: b.book_photo || b.image,
-                    rating: Number(b.book_rating) || 0, // ✅ ensure numeric rating
+                    rating: Number(b.book_rating) || 0,
                   }}
                   variant="row"
                   status="Available"
                   onClick={() => onClickBook(b.book_id)}
                 />
-
               ))
             )}
           </div>
@@ -396,11 +259,12 @@ function BookSection({
 }
 
 
+// // Reusable BookSection component omitted (we inline the markup above to keep your original structure)
+
+
 // // src/pages/Home/Home.jsx
-// import { useMemo, useRef, useState } from "react";
+// import { useEffect, useMemo, useRef, useState } from "react";
 // import Sidebar from "../../components/Sidebar/Sidebar";
-// import Section from "../../components/Section/Section";
-// import books from "../../data/sampleBooks";
 // import Navbar from "../../components/Navbar/Navbar";
 // import FeaturedBanner from "../../components/FeaturedBanner/FeaturedBanner";
 // import NewBookCollections from "../../components/NewBookCollections/NewBookCollections";
@@ -409,63 +273,62 @@ function BookSection({
 //   Star,
 //   Filter,
 //   X,
-//   MoreVertical,
 //   ChevronLeft,
 //   ChevronRight,
 // } from "lucide-react";
 // import BookCard from "../../components/BookCard/BookCard";
+// import axios from "axios";
 
 // export default function Home() {
 //   const [filter, setFilter] = useState(null);
-//   const [openFilters, setOpenFilters] = useState(false); // mobile sidebar
-//   const [openMenuId, setOpenMenuId] = useState(null); // kebab menu per-card
+//   const [openFilters, setOpenFilters] = useState(false);
+//   const [openMenuId, setOpenMenuId] = useState(null);
+
+//   const [recommendedBooks, setRecommendedBooks] = useState([]);
+//   const [popularBooks, setPopularBooks] = useState([]);
+//   const [newBooks, setNewBooks] = useState([]);
+
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState("");
+
 //   const navigate = useNavigate();
 
-//   // ----- data for global filtered state (unchanged) -----
-//   const allBooks = useMemo(
-//     () => [...(books?.recommended || []), ...(books?.popular || [])],
-//     []
-//   );
+//   // Scroll refs
+//   const recRowRef = useRef(null);
+//   const popRowRef = useRef(null);
+//   const newRowRef = useRef(null);
 
-//   const filtered = useMemo(() => {
-//     if (!filter) return [];
+//   // === Fetch all book sections ===
+//   useEffect(() => {
+//   const fetchData = async () => {
+//       setLoading(true);
+//       try {
+//         const baseUrl = "http://127.0.0.1:8000/books"; // ⚙️ Change base if needed
 
-//     if (filter.type === "all") return allBooks;
+//         const [recRes, popRes, newRes] = await Promise.all([
+//           axios.get(`${baseUrl}/recommended?page=1&page_size=10`),
+//           axios.get(`${baseUrl}/popular?page=1&page_size=10`),
+//           axios.get(`${baseUrl}/new?page=1&page_size=10`),
+//         ]);
 
-//     if (filter.type === "category") {
-//       return allBooks.filter(
-//         (b) =>
-//           (b.category || "").toLowerCase() ===
-//           (filter.value || "").toLowerCase()
-//       );
-//     }
+//         setRecommendedBooks(recRes.data || []);
+//         setPopularBooks(popRes.data || []);
+//         setNewBooks(newRes.data || []);
+//       } catch (err) {
+//         console.error("Error fetching books:", err);
+//         setError("Failed to load book data.");
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
 
-//     if (filter.type === "subcategory") {
-//       return allBooks.filter(
-//         (b) =>
-//           (b.category || "").toLowerCase() ===
-//           (filter.parent || "").toLowerCase()
-//       );
-//     }
+//     fetchData();
+//   }, []);
 
-//     return allBooks;
-//   }, [filter, allBooks]);
+  
+  
 
-//   const renderStars = (rating = 0) =>
-//     [...Array(5)].map((_, i) => (
-//       <Star
-//         key={i}
-//         className={`w-4 h-4 ${
-//           i < (rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
-//         }`}
-//       />
-//     ));
-
-//   // Data
-//   const recommended = books?.recommended || [];
-//   const popular = books?.popular || [];
-
-//   // status helper
+//   // Helpers
 //   const getStatus = (b) => {
 //     const raw = (b.status || b.stock || "").toString().trim().toLowerCase();
 
@@ -474,7 +337,6 @@ function BookSection({
 //       return "Stock Out";
 //     if (raw === "upcoming" || raw === "coming soon") return "Upcoming";
 
-//     if ((b.title || "").toLowerCase().includes("empire")) return "Stock Out";
 //     return "Available";
 //   };
 
@@ -486,264 +348,82 @@ function BookSection({
 //     return "text-gray-600";
 //   };
 
-//   // navigation + kebab
 //   const goTo = (id) => navigate(`/book/${id}`);
-//   const toggleMenu = (e, id) => {
-//     e.stopPropagation();
-//     setOpenMenuId((prev) => (prev === id ? null : id));
+//   const handleRowScroll = () => {
+//     if (openMenuId !== null) setOpenMenuId(null);
 //   };
-//   const handleReadThisBook = (e, id) => {
-//     e.stopPropagation();
-//     setOpenMenuId(null);
-//     goTo(id);
-//   };
-
-//   // shared card classes
-//   const cardBase =
-//     "group cursor-pointer border border-gray-300 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-sky-500 relative";
-//   const imgBase =
-//     "w-full h-40 object-cover transition-transform duration-300 group-hover:scale-[1.02]";
-
-//   // --- Horizontal scroll refs & helpers (left↔right scrolling) ---
-//   const recRowRef = useRef(null);
-//   const popRowRef = useRef(null);
 
 //   const scrollByAmount = (node, dir = 1) => {
 //     if (!node?.current) return;
 //     const container = node.current;
-//     // Scroll by ~one card (includes gap)
 //     const step = Math.min(360, container.clientWidth * 0.8);
 //     container.scrollBy({ left: step * dir, behavior: "smooth" });
 //   };
 
-//   // close any open kebab on scroll
-//   const handleRowScroll = () => {
-//     if (openMenuId !== null) setOpenMenuId(null);
-//   };
+//   // ====== UI: Loading / Error ======
+//   if (loading) {
+//     return (
+//       <div className="flex items-center justify-center h-screen text-gray-600">
+//         Loading book collections...
+//       </div>
+//     );
+//   }
+
+//   if (error) {
+//     return (
+//       <div className="flex items-center justify-center h-screen text-red-500">
+//         {error}
+//       </div>
+//     );
+//   }
 
 //   return (
 //     <div className="min-h-screen bg-gray-50">
 //       <Navbar />
 
-//       {/* Main Content (centered container) */}
 //       <div className="mx-auto max-w-7xl w-full flex flex-col md:flex-row px-4 sm:px-6 lg:px-8 py-4 gap-4">
-//         {/* Desktop/Tablet Sidebar */}
+//         {/* Sidebar */}
 //         <aside className="hidden md:block w-full md:w-64 lg:w-72 flex-none md:sticky md:top-20">
 //           <Sidebar onSelect={setFilter} />
 //         </aside>
 
-//         {/* Content Area */}
+//         {/* Main Content */}
 //         <main className="flex-1 min-w-0">
-//           {/* Mobile Filters Button */}
-//           <div className="md:hidden mb-3">
-//             <button
-//               type="button"
-//               onClick={() => setOpenFilters(true)}
-//               className="inline-flex items-center gap-2 border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 rounded-md"
-//             >
-//               <Filter className="w-4 h-4" />
-//               Filters
-//             </button>
-//           </div>
-
 //           <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200 shadow-sm">
-//             {!filter ? (
-//               <>
-//                 {/* ======== RECOMMENDED ======== */}
-//                 <div className="mb-8 rounded-lg border border-gray-300 overflow-hidden">
-//                   <div className="px-4 py-3 bg-white flex items-center justify-between">
-//                     <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
-//                       Recommended
-//                     </h2>
-//                     <div className="hidden sm:flex gap-2">
-//                       <button
-//                         onClick={() => scrollByAmount(recRowRef, -1)}
-//                         className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
-//                         aria-label="Scroll left"
-//                       >
-//                         <ChevronLeft className="w-4 h-4" />
-//                       </button>
-//                       <button
-//                         onClick={() => scrollByAmount(recRowRef, 1)}
-//                         className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
-//                         aria-label="Scroll right"
-//                       >
-//                         <ChevronRight className="w-4 h-4" />
-//                       </button>
-//                     </div>
-//                   </div>
+//             {/* ======== RECOMMENDED ======== */}
+//             <BookSection
+//               title="Recommended"
+//               data={recommendedBooks}
+//               refNode={recRowRef}
+//               onScroll={handleRowScroll}
+//               onClickBook={goTo}
+//               scrollByAmount={scrollByAmount}
+//             />
 
-//                   <div className="border-t border-gray-200 relative bg-white">
-//                     <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-white to-transparent" />
-//                     <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-white to-transparent" />
+//             {/* ======== POPULAR ======== */}
+//             <BookSection
+//               title="Popular"
+//               data={popularBooks}
+//               refNode={popRowRef}
+//               onScroll={handleRowScroll}
+//               onClickBook={goTo}
+//               scrollByAmount={scrollByAmount}
+//             />
 
-//                     <div
-//                       ref={recRowRef}
-//                       onScroll={handleRowScroll}
-//                       className="overflow-x-auto no-scrollbar"
-//                     >
-//                       <div className="flex gap-5 p-3 sm:p-4 snap-x snap-mandatory">
-//                         {recommended.map((b) => (
-//                           <BookCard
-//                             key={b.id}
-//                             book={{
-//                               ...b,
-//                               coverImage: b.coverImage || b.image, // ensure the card has coverImage
-//                             }}
-//                             variant="row"
-//                             status={getStatus(b)}
-//                             onClick={() => goTo(b.id)}
-//                             onReadThisBook={() => goTo(b.id)}
-//                           />
-//                         ))}
-//                       </div>
-//                     </div>
-
-//                     <div className="sm:hidden absolute inset-y-0 left-1 flex items-center">
-//                       <button
-//                         onClick={() => scrollByAmount(recRowRef, -1)}
-//                         className="p-2 rounded-md border border-gray-300 bg-white/90 hover:bg-white shadow"
-//                         aria-label="Scroll left"
-//                       >
-//                         <ChevronLeft className="w-4 h-4" />
-//                       </button>
-//                     </div>
-//                     <div className="sm:hidden absolute inset-y-0 right-1 flex items-center">
-//                       <button
-//                         onClick={() => scrollByAmount(recRowRef, 1)}
-//                         className="p-2 rounded-md border border-gray-300 bg-white/90 hover:bg-white shadow"
-//                         aria-label="Scroll right"
-//                       >
-//                         <ChevronRight className="w-4 h-4" />
-//                       </button>
-//                     </div>
-//                   </div>
-//                 </div>
-//                 {/* ======== /RECOMMENDED ======== */}
-
-//                 {/* ======== POPULAR ======== */}
-//                 <div className="mb-8 rounded-lg border border-gray-300 overflow-hidden">
-//                   <div className="px-4 py-3 bg-white flex items-center justify-between">
-//                     <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
-//                       Popular
-//                     </h2>
-
-//                     <div className="hidden sm:flex gap-2">
-//                       <button
-//                         onClick={() => scrollByAmount(popRowRef, -1)}
-//                         className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
-//                         aria-label="Scroll left"
-//                       >
-//                         <ChevronLeft className="w-4 h-4" />
-//                       </button>
-//                       <button
-//                         onClick={() => scrollByAmount(popRowRef, 1)}
-//                         className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
-//                         aria-label="Scroll right"
-//                       >
-//                         <ChevronRight className="w-4 h-4" />
-//                       </button>
-//                     </div>
-//                   </div>
-
-//                   <div className="border-t border-gray-200 relative bg-white">
-//                     <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-white to-transparent" />
-//                     <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-white to-transparent" />
-
-//                     <div
-//                       ref={popRowRef}
-//                       onScroll={handleRowScroll}
-//                       className="overflow-x-auto no-scrollbar"
-//                     >
-//                       <div className="flex gap-5 p-3 sm:p-4 snap-x snap-mandatory">
-//                         {popular.map((b) => (
-//                           <BookCard
-//                             key={b.id}
-//                             book={{
-//                               ...b,
-//                               coverImage: b.coverImage || b.image,
-//                             }}
-//                             variant="row"
-//                             status={getStatus(b)}
-//                             onClick={() => goTo(b.id)}
-//                             onReadThisBook={() => goTo(b.id)}
-//                           />
-//                         ))}
-//                       </div>
-//                     </div>
-
-//                     <div className="sm:hidden absolute inset-y-0 left-1 flex items-center">
-//                       <button
-//                         onClick={() => scrollByAmount(popRowRef, -1)}
-//                         className="p-2 rounded-md border border-gray-300 bg-white/90 hover:bg-white shadow"
-//                         aria-label="Scroll left"
-//                       >
-//                         <ChevronLeft className="w-4 h-4" />
-//                       </button>
-//                     </div>
-//                     <div className="sm:hidden absolute inset-y-0 right-1 flex items-center">
-//                       <button
-//                         onClick={() => scrollByAmount(popRowRef, 1)}
-//                         className="p-2 rounded-md border border-gray-300 bg-white/90 hover:bg-white shadow"
-//                         aria-label="Scroll right"
-//                       >
-//                         <ChevronRight className="w-4 h-4" />
-//                       </button>
-//                     </div>
-//                   </div>
-//                 </div>
-//                 {/* ======== /POPULAR ======== */}
-
-//                 {/* Keep rest as-is */}
-//                 <NewBookCollections />
-//               </>
-//             ) : (
-//               <>
-//                 <div className="flex items-center justify-between mb-4">
-//                   <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
-//                     Showing results for:{" "}
-//                     <span className="text-sky-600">
-//                       {filter.type === "subcategory"
-//                         ? `${filter.parent} → ${filter.value}`
-//                         : filter.value || "All"}
-//                     </span>
-//                   </h2>
-//                   <button
-//                     onClick={() => setFilter(null)}
-//                     className="text-sm text-gray-600 hover:text-sky-600"
-//                   >
-//                     Clear
-//                   </button>
-//                 </div>
-
-//                 {/* Filtered results — fixed-size cards like scrollers */}
-//                 {filtered.length === 0 ? (
-//                   <div className="text-gray-500 text-sm">No books found.</div>
-//                 ) : (
-//                   <div className="flex flex-wrap gap-5">
-//                     {filtered.map((b) => (
-//                       <BookCard
-//                         key={b.id}
-//                         book={{
-//                           ...b,
-//                           coverImage: b.coverImage || b.image,
-//                         }}
-//                         variant="grid"
-//                         size="scroller"
-//                         status={getStatus(b)}
-//                         onClick={() => goTo(b.id)}
-//                         onReadThisBook={() => goTo(b.id)}
-//                       />
-//                     ))}
-//                   </div>
-//                 )}
-//               </>
-//             )}
+//             {/* ======== NEW COLLECTION ======== */}
+//             <BookSection
+//               title="New Book Collections"
+//               data={newBooks}
+//               refNode={newRowRef}
+//               onScroll={handleRowScroll}
+//               onClickBook={goTo}
+//               scrollByAmount={scrollByAmount}
+//             />
 //           </div>
 //         </main>
 //       </div>
 
-//       {/* Center the banner to match the content width */}
+//       {/* Banner */}
 //       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 //         <FeaturedBanner />
 //       </div>
@@ -779,4 +459,68 @@ function BookSection({
 //   );
 // }
 
+// // ✅ Reusable Book Section component
+// function BookSection({
+//   title,
+//   data,
+//   refNode,
+//   onScroll,
+//   onClickBook,
+//   scrollByAmount,
+// }) {
+//   return (
+//     <div className="mb-8 rounded-lg border border-gray-300 overflow-hidden">
+//       <div className="px-4 py-3 bg-white flex items-center justify-between">
+//         <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
+//           {title}
+//         </h2>
+//         <div className="hidden sm:flex gap-2">
+//           <button
+//             onClick={() => scrollByAmount(refNode, -1)}
+//             className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
+//             aria-label="Scroll left"
+//           >
+//             <ChevronLeft className="w-4 h-4" />
+//           </button>
+//           <button
+//             onClick={() => scrollByAmount(refNode, 1)}
+//             className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
+//             aria-label="Scroll right"
+//           >
+//             <ChevronRight className="w-4 h-4" />
+//           </button>
+//         </div>
+//       </div>
+
+//       <div className="border-t border-gray-200 relative bg-white">
+//         <div
+//           ref={refNode}
+//           onScroll={onScroll}
+//           className="overflow-x-auto no-scrollbar"
+//         >
+//           <div className="flex gap-5 p-3 sm:p-4 snap-x snap-mandatory">
+//             {data.length === 0 ? (
+//               <p className="text-gray-500 text-sm">No books found.</p>
+//             ) : (
+//               data.map((b) => (
+//                 <BookCard
+//                   key={b.book_id}
+//                   book={{
+//                     ...b,
+//                     coverImage: b.book_photo || b.image,
+//                     rating: Number(b.book_rating) || 0, // ✅ ensure numeric rating
+//                   }}
+//                   variant="row"
+//                   status="Available"
+//                   onClick={() => onClickBook(b.book_id)}
+//                 />
+
+//               ))
+//             )}
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
 

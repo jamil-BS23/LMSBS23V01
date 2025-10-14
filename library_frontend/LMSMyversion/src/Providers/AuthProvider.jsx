@@ -9,12 +9,16 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem("lms_auth") === "true";
+    const authStatus = localStorage.getItem("lms_auth") === "true";
+    console.log("🔐 AuthProvider init - isAuthenticated:", authStatus);
+    return authStatus;
   });
 
   const [user, setUser] = useState(() => {
     const stored = localStorage.getItem("lms_user");
-    return stored ? JSON.parse(stored) : null;
+    const userData = stored ? JSON.parse(stored) : null;
+    console.log("🔐 AuthProvider init - user:", userData);
+    return userData;
   });
 
   const navigate = useNavigate();
@@ -32,12 +36,46 @@ export function AuthProvider({ children }) {
     }
   }, [user]);
 
+
+
+  // useEffect(() => {
+  //   if (isAuthenticated && user) {
+  //     if (user.role === "admin") navigate("/dashboard", { replace: true });
+  //     else navigate("/user", { replace: true });
+  //   }
+  // }, []); // run only once
+  
+
   // after successful API login
   const login = (userInfo) => {
     setIsAuthenticated(true);
-    setUser(userInfo); // e.g. { name: "Jamil Ahmed" }
-    navigate("/", { replace: true });
+    setUser(userInfo); // userInfo must contain role: "admin" or "user"
+
+    console.log("🔐 Login successful - User info:", userInfo);
+    console.log("🔐 User role:", userInfo.role);
+    
+    // ✅ Role-based redirect
+    if (userInfo.role === "admin") {
+      console.log("🔐 Redirecting admin to dashboard");
+      navigate("/dashboard", { replace: true });
+    } else {
+      console.log("🔐 Redirecting user to user dashboard");
+      navigate("/user", { replace: true });
+    }
   };
+
+  // const login = (userInfo) => {
+  //   setIsAuthenticated(true);
+  //   setUser(userInfo); // userInfo must contain role: "admin" or "user"
+  //   console.log("Role:  ", userInfo);
+  //   // ✅ Role-based redirect
+  //   if (userInfo.role === "admin") {
+  //     navigate("/dashboard", { replace: true });
+  //   } else {
+  //     navigate("/user", { replace: true });
+  //   }
+  // };
+  
 
   const logout = () => {
     setIsAuthenticated(false);
@@ -50,10 +88,15 @@ export function AuthProvider({ children }) {
     [isAuthenticated, user]
   );
 
+  
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);
+
+
+
 
 
 

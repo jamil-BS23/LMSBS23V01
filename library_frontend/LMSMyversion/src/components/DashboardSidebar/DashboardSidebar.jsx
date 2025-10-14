@@ -56,11 +56,11 @@ export default function Sidebar() {
             </NavLink>
           </li>
 
-          <li>
+          {/* <li>
             <NavLink to="/user" className={itemClass}>
               <Users size={18} /> Member
             </NavLink>
-          </li>
+          </li> */}
 
           <li>
             <NavLink to="/setting" className={itemClass}>

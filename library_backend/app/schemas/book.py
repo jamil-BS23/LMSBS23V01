@@ -21,7 +21,7 @@ class BookDetail(BaseModel):
     book_title: str
     book_author: str
     book_category_id: int
-    category_title: Optional[str]
+    ##category_title: Optional[str]
     book_rating: float
     book_photo: Optional[HttpUrl]
     book_pdf: Optional[HttpUrl]
@@ -41,6 +41,7 @@ class BookDetail2(BaseModel):
     book_title: str
     book_author: str
     book_category_id: int
+    category_title: str
     book_rating: float
     book_photo: Optional[HttpUrl]
     book_pdf: Optional[HttpUrl]

@@ -47,7 +47,7 @@ async def count_books(db: AsyncSession = Depends(get_db)) -> Dict[str, int]:
     return {"count": total}
 
 
-@router.get("/all", response_model=List[BookDetail], tags=["Admin Books"], dependencies=[Depends(get_current_user)])
+@router.get("/all", response_model=List[BookDetail2], tags=["Admin Books"], dependencies=[Depends(get_current_user)])
 async def list_all_books(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
@@ -105,7 +105,7 @@ async def create_book(
 
 
 
-@router.get("/recommended", response_model=List[BookDetail2], tags=["Books"])
+@router.get("/recommended", response_model=List[BookDetail], tags=["Books"])
 async def get_recommended_books(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
@@ -122,7 +122,7 @@ async def get_recommended_books(
     return result.scalars().all()
 
 
-@router.get("/popular", response_model=List[BookDetail2], tags=["Books"])
+@router.get("/popular", response_model=List[BookDetail], tags=["Books"])
 async def get_popular_books(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
@@ -139,7 +139,7 @@ async def get_popular_books(
     return result.scalars().all()
 
 
-@router.get("/new", response_model=List[BookDetail2], tags=["Books"])
+@router.get("/new", response_model=List[BookDetail], tags=["Books"])
 async def get_new_books(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
@@ -186,7 +186,7 @@ async def list_books_by_category(
 
 
 
-@router.get("/{book_id}", response_model=BookDetail, tags=["Public Books"])
+@router.get("/{book_id}", response_model=BookDetail2, tags=["Public Books"])
 async def book_details(book_id: int, db: AsyncSession = Depends(get_db)):
     book = await BookCRUD.get_book(db, book_id)
     if not book:

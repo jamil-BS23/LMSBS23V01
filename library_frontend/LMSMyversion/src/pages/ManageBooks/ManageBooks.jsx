@@ -68,6 +68,8 @@ function toYMD(dateStr) {
   return `${y}-${m}-${dd}`;
 }
 
+
+
 function normalizeFromSection(item) {
   return {
     id: `sec_${String(item.id ?? crypto.randomUUID())}`,
@@ -76,7 +78,7 @@ function normalizeFromSection(item) {
     category: item.category ?? "—",
     copies: item.copies || "—",
     updatedOn: toYMD(item.publishDate ?? item.stockDate ?? ""),
-    cover: item.image ?? item.book_photo ?? PLACEHOLDER_IMG,
+    cover: item.book_photo ?? PLACEHOLDER_IMG,
     pdf: item.pdf ?? "",
     audio: item.audio ?? "",
     description: item.summary ?? "",
@@ -88,16 +90,18 @@ function normalizeFromJson(item) {
     id: `json_${String(item.id ?? crypto.randomUUID())}`,
     title: item.title ?? "—",
     author: item.authors ?? item.author ?? "—",
-    category: item.category ?? "—",
+    category: item.category_id,
+    category_title: item.category_title,
     // copies: "—",
     copies: item.copies || "—",
     updatedOn: toYMD(item.publishDate ?? ""),
-    cover: item.book_photo ?? PLACEHOLDER_IMG,
+    cover: item.book_photo,
 
     pdf: item.pdf ?? "",
     audio: item.audio ?? "",
     description: item.summary ?? "",
   };
+
 }
 
 // ---------- Filter Bar COMPONENT ----------
@@ -192,33 +196,49 @@ export default function ManageBooks() {
       setError("");
       try {
         // 1) Load categories to map ID -> title
+        let categoriesData = [];
         try {
           // Backend mounts categories router with an extra prefix, so full path is /categories/books/category/all
           const catRes = await api.get("/categories/books/category/all");
-          if (!cancelled) setCategories(Array.isArray(catRes.data) ? catRes.data : []);
-        } catch {
+          categoriesData = Array.isArray(catRes.data) ? catRes.data : [];
+          if (!cancelled) setCategories(categoriesData);
+        } catch (err) {
+          console.error("Failed to fetch categories:", err);
           if (!cancelled) setCategories([]);
         }
 
         // 2) Load admin books
         const adminBooks = await bookService.getAllAdminBooks({ page: 1, page_size: 100 });
         if (cancelled) return;
-        const idToTitle = new Map(
-          (Array.isArray(categories) ? categories : []).map((c) => [c.category_id || c.id, c.category_title || c.title])
-        );
-        const mapped = (Array.isArray(adminBooks) ? adminBooks : []).map((b) => ({
-          id: `api_${b.book_id}`,
-          title: b.book_title,
-          author: b.book_author,
-          category: idToTitle.get(b.book_category_id) || String(b.book_category_id),
-          copies: Number.isFinite(b.book_count) ? b.book_count : 0,
-          updatedOn: toYMD(new Date().toISOString()),
-          cover: normalizeCoverUrl(b.book_photo),
 
-          pdf: "",
-          audio: "",
-          description: b.book_details,
-        }));
+        // ✅ Use the fetched categories data directly, not the state
+        const idToTitle = new Map(
+          categoriesData.map((c) => [c.category_id || c.id, c.category_title || c.title])
+        );
+
+        console.log("📚 Categories data:", categoriesData);
+        console.log("📚 Category mapping:", idToTitle);
+        console.log("📚 Admin books:", adminBooks);
+
+        const mapped = (Array.isArray(adminBooks) ? adminBooks : []).map((b) => {
+          const categoryTitle = idToTitle.get(b.book_category_id) || b.category_title || "Unknown";
+          console.log(`📚 Book ${b.book_title}: category_id=${b.book_category_id}, category_title=${categoryTitle}`);
+          
+          return {
+            id: `api_${b.book_id}`,
+            title: b.book_title,
+            author: b.book_author,
+            category: b.category_id,
+            category_title: categoryTitle, // ✅ Add category_title field for direct access
+            copies: Number.isFinite(b.book_count) ? b.book_count : 0,
+            updatedOn: toYMD(new Date().toISOString()),
+            cover: normalizeCoverUrl(b.book_photo),
+
+            pdf: "",
+            audio: "",
+            description: b.book_details,
+          };
+        });
 
         
         setBooksJson(mapped);
@@ -506,7 +526,7 @@ export default function ManageBooks() {
         id: `api_${savedBook.book_id}`,
         title: savedBook.book_title || "—",
         author: savedBook.book_author || "—",
-        category: String(savedBook.book_category_id ?? "—"),
+        category: String(savedBook.book_category_id?? "—"),
         copies: savedBook.book_count ?? "—",
         updatedOn: toYMD(new Date().toISOString()),
         cover: normalizeCoverUrl(savedBook.book_photo),
@@ -637,7 +657,7 @@ export default function ManageBooks() {
       <td className="py-3 px-4">
         <div className="flex items-center gap-3">
           <img
-            src={b.cover || PLACEHOLDER_IMG}
+            src={b.book_photo || PLACEHOLDER_IMG}
             alt={b.title}
             className="h-10 w-10 rounded object-cover bg-gray-100 flex-shrink-0"
             onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}
@@ -647,9 +667,8 @@ export default function ManageBooks() {
           </p>
         </div>
       </td>
-
       <td className="py-3 px-4 text-gray-700">{b.author}</td>
-      <td className="py-3 px-4 text-gray-700">{b.category}</td>
+      <td className="py-3 px-4 text-gray-700">{b.category_title}</td>
       <td className="py-3 px-4 text-gray-700">{b.copies ?? "—"}</td>
 
       <td className="py-3 px-4">

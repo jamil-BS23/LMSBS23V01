@@ -18,7 +18,30 @@ export default function Login() {
 
     try {
       const { access_token } = await authService.login({ user_name: username, password });
-      login({ name: username, token: access_token });
+      
+      // ✅ Decode JWT token to extract user role
+      const getUserRoleFromToken = (token) => {
+        try {
+          if (!token) return 'user';
+          
+          // Decode JWT token (payload is in the middle part)
+          const payload = token.split('.')[1];
+          const decoded = JSON.parse(atob(payload));
+          return decoded.role || 'user';
+        } catch (error) {
+          console.error('Error decoding token:', error);
+          return 'user'; // Default to user role if decoding fails
+        }
+      };
+
+      const userRole = getUserRoleFromToken(access_token);
+      
+      // ✅ Pass complete user info including role
+      login({ 
+        name: username, 
+        role: userRole,
+        token: access_token 
+      });
     } catch (err) {
       setError(err?.response?.data?.detail || err.message || "Login failed");
       setLoading(false);

@@ -84,3 +84,8 @@ class BookUpdate(BaseModel):
 
 class RateBook(BaseModel):
     rating: float
+
+
+
+class UpdateFeatured(BaseModel):
+    featured: bool

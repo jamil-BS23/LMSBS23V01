@@ -36,6 +36,9 @@ export default function Login() {
 
       const userRole = getUserRoleFromToken(access_token);
       
+      console.log("🔑 JWT Token decoded role:", userRole);
+      console.log("🔑 Token payload:", access_token.split('.')[1] ? JSON.parse(atob(access_token.split('.')[1])) : "Invalid token");
+      
       // ✅ Pass complete user info including role
       login({ 
         name: username, 

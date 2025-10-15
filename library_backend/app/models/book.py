@@ -17,4 +17,5 @@ class Book(Base):
     book_availability = Column(Boolean, default=True)
     book_count = Column(Integer, default=1)
     book_review_count = Column(Integer, default=0)
+    featured = Column(Boolean, default=False, nullable=True)  
     created_at = Column(TIMESTAMP, server_default=func.now())

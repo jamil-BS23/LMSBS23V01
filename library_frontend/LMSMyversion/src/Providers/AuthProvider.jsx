@@ -48,11 +48,13 @@ export function AuthProvider({ children }) {
 
   // after successful API login
   const login = (userInfo) => {
+    console.log("🔐 Login function called with userInfo:", userInfo);
     setIsAuthenticated(true);
     setUser(userInfo); // userInfo must contain role: "admin" or "user"
 
     console.log("🔐 Login successful - User info:", userInfo);
     console.log("🔐 User role:", userInfo.role);
+    console.log("🔐 Role type:", typeof userInfo.role);
     
     // ✅ Role-based redirect
     if (userInfo.role === "admin") {

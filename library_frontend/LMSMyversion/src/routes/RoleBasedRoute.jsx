@@ -14,7 +14,9 @@ export default function RoleBasedRoute({
     user,
     userRole: user?.role,
     allowedRoles,
-    path: window.location.pathname
+    path: window.location.pathname,
+    localStorage_user: localStorage.getItem("lms_user"),
+    localStorage_auth: localStorage.getItem("lms_auth")
   });
 
   // If not authenticated, redirect to login

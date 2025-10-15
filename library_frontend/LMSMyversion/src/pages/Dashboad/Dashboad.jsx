@@ -8,8 +8,8 @@ import {
   BookOpen,
   HelpCircle,
   LogOut,
-  Library, // optional
-  Layers,  // optional
+  Library,
+  Layers,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -19,33 +19,28 @@ import { Link } from "react-router-dom";
 import Sidebar from "../../components/DashboardSidebar/DashboardSidebar";
 import api from "../../config/api";
 
-
-
-
 export default function Dashboard() {
   useEffect(() => {
     document.title = "Library Dashboard";
   }, []);
 
   // --- Borrow Request demo data (replace with API later) ---
-  
-
-  // Confirmation modal state
   const [confirm, setConfirm] = useState({ open: false, type: "", index: -1, id: null });
+  const [toast, setToast] = useState({ show: false, type: "accept", message: "" });
+
   function openConfirm(type, index) {
     setConfirm({
       open: true,
       type,
       index,
-      id: requests[index].borrow_id,  // ✅ capture borrow_id
+      id: requests[index].borrow_id,
     });
   }
-  
+
   function closeConfirm() {
     setConfirm({ open: false, type: "", index: -1, id: null });
   }
-  // Toast (2s)
-  const [toast, setToast] = useState({ show: false, type: "accept", message: "" });
+
   const showToast = (type, message) => {
     setToast({ show: true, type, message });
     setTimeout(() => setToast({ show: false, type, message: "" }), 2000);
@@ -53,57 +48,41 @@ export default function Dashboard() {
 
   async function doConfirm() {
     if (confirm.id == null) return;
-  
+
     try {
       const status = confirm.type === "accept" ? "accepted" : "rejected";
       await api.patch(`/borrow/borrow/${confirm.id}/request`, null, {
-        params: { status },  // backend expects query param ?status=accepted
+        params: { status },
       });
-  
-      // ✅ Update UI: remove the processed request
+
       setRequests(prev => prev.filter((_, i) => i !== confirm.index));
-  
-      // show toast
-      setToast({
-        show: true,
-        type: confirm.type,
-        message: `Request ${status}.`,
-      });
-  
+      showToast(confirm.type, `Request ${status}.`);
       closeConfirm();
-      // hide toast after 2 seconds
-      setTimeout(() => setToast({ show: false, type: "", message: "" }), 2000);
     } catch (err) {
       console.error("Failed to update request:", err);
     }
   }
-  
 
   // -------------------- WEEKLY LINE CHART --------------------
   const WEEK_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-  // Keep your 3 series but name them Borrowed/Returned/Overdue (weekly base)
   const series = useMemo(
     () => [
-      { name: "Borrowed", color: "stroke-sky-500",   dot: "fill-sky-500",   values: [20, 55, 62, 28, 24, 68, 64] },
+      { name: "Borrowed", color: "stroke-sky-500", dot: "fill-sky-500", values: [20, 55, 62, 28, 24, 68, 64] },
       { name: "Returned", color: "stroke-amber-500", dot: "fill-amber-400", values: [48, 40, 30, 18, 22, 42, 58] },
-      { name: "Overdue",  color: "stroke-rose-500",  dot: "fill-rose-500",  values: [10, 30, 55, 58, 26, 40, 88] },
+      { name: "Overdue", color: "stroke-rose-500", dot: "fill-rose-500", values: [10, 30, 55, 58, 26, 40, 88] },
     ],
     []
   );
 
-  // Smooth path helpers (quadratic mid-point)
   const chartBox = { w: 720, h: 200, padX: 36, padY: 20 };
-  const allVals = series.flatMap((s) => s.values);
+  const allVals = series.flatMap(s => s.values);
   const yMax = Math.max(1, Math.ceil(Math.max(...allVals) / 10) * 10);
   const yMin = 0;
 
-  const sx = (i) =>
-    chartBox.padX + (i * (chartBox.w - chartBox.padX * 2)) / (WEEK_LABELS.length - 1);
-  const sy = (v) =>
-    chartBox.h - chartBox.padY - ((v - yMin) / (yMax - yMin)) * (chartBox.h - chartBox.padY * 2);
+  const sx = i => chartBox.padX + (i * (chartBox.w - chartBox.padX * 2)) / (WEEK_LABELS.length - 1);
+  const sy = v => chartBox.h - chartBox.padY - ((v - yMin) / (yMax - yMin)) * (chartBox.h - chartBox.padY * 2);
 
-  const makeSmoothPath = (vals) => {
+  const makeSmoothPath = vals => {
     const pts = vals.map((v, i) => ({ x: sx(i), y: sy(v) }));
     if (!pts.length) return "";
     if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
@@ -117,24 +96,21 @@ export default function Dashboard() {
     return d;
   };
 
-  const paths = series.map((s) => ({ ...s, d: makeSmoothPath(s.values) }));
-
-  // Stroke-draw animation
+  const paths = series.map(s => ({ ...s, d: makeSmoothPath(s.values) }));
   const pathRefs = useRef([]);
+
   useEffect(() => {
     pathRefs.current.forEach((el, i) => {
       if (!el) return;
       const len = el.getTotalLength();
       el.style.strokeDasharray = `${len}`;
       el.style.strokeDashoffset = `${len}`;
-      // reflow then animate
       el.getBoundingClientRect();
       el.style.transition = `stroke-dashoffset 900ms ease ${i * 140}ms`;
       el.style.strokeDashoffset = "0";
     });
-  }, [paths.map((p) => p.d).join("|")]);
+  }, [paths.map(p => p.d).join("|")]);
 
-  // "Updated" timestamp
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -149,10 +125,9 @@ export default function Dashboard() {
     returned: 0,
     overdue: 0,
     pending: 0,
-    total:0,
+    total: 0,
     totalmember: 0,
   });
-  
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -165,36 +140,28 @@ export default function Dashboard() {
           api.get("/books/count"),
           api.get("/users/count"),
         ]);
-  
+
         setStats({
           borrowed: Number(borrowedRes.data.count || 0),
           returned: Number(returnedRes.data.count || 0),
-          overdue:  Number(overdueRes.data.count || 0),
-          pending:  Number(pendingRes.data.count || 0),
-          total:    Number(tot.data.count || 0),
+          overdue: Number(overdueRes.data.count || 0),
+          pending: Number(pendingRes.data.count || 0),
+          total: Number(tot.data.count || 0),
           totalmember: Number(totalmem.data.count),
-
-          
         });
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
       }
     };
-  
+
     fetchCounts();
   }, []);
-
-
-
-
 
   const [requests, setRequests] = useState([]);
   useEffect(() => {
     const fetchBorrowRequests = async () => {
       try {
         const res = await api.get("/borrow/borrow/request/pending/list");
-        // assuming API returns an array of objects with keys:
-        // user_name, book_title, borrow_date, return_date
         const formatted = (res.data || []).map(item => ({
           borrow_id: item.borrow_id,
           book: item.book_title,
@@ -207,12 +174,11 @@ export default function Dashboard() {
         console.error("Failed to load pending borrow requests:", err);
       }
     };
-  
+
     fetchBorrowRequests();
   }, []);
-  
-  const [overdueRecords, setOverdueRecords] = useState([]);
 
+  const [overdueRecords, setOverdueRecords] = useState([]);
   useEffect(() => {
     const fetchOverdueRecords = async () => {
       try {
@@ -221,7 +187,7 @@ export default function Dashboard() {
           id: i + 1,
           book: item.book_title,
           user: item.user_name,
-          email: item.user_id,      // Assuming user_id represents email
+          email: item.user_id,
           returned: item.return_date,
         }));
         setOverdueRecords(formatted);
@@ -229,18 +195,29 @@ export default function Dashboard() {
         console.error("Failed to load overdue records:", err);
       }
     };
-  
+
     fetchOverdueRecords();
   }, []);
-  
 
+  // -------------------- Pagination --------------------
+  const itemsPerPage = 6;
+
+  // Overdue
+  const [overduePage, setOverduePage] = useState(1);
+  const overdueTotalPages = Math.ceil(overdueRecords.length / itemsPerPage);
+  const overdueStartIndex = (overduePage - 1) * itemsPerPage;
+  const paginatedOverdue = overdueRecords.slice(overdueStartIndex, overdueStartIndex + itemsPerPage);
+
+  // Borrow Requests
+  const [requestPage, setRequestPage] = useState(1);
+  const requestTotalPages = Math.ceil(requests.length / itemsPerPage);
+  const requestStartIndex = (requestPage - 1) * itemsPerPage;
+  const paginatedRequests = requests.slice(requestStartIndex, requestStartIndex + itemsPerPage);
+
+  // -------------------- JSX --------------------
   return (
     <div className="min-h-screen flex bg-gray-100">
-      {/* Sidebar */}
       <Sidebar />
-     
-
-      {/* Main */}
       <main className="flex-1 p-6 space-y-6">
         {/* Top Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -248,8 +225,8 @@ export default function Dashboard() {
             { label: "Borrowed Books", value: stats.borrowed },
             { label: "Returned Books", value: stats.returned },
             { label: "Overdue Books", value: stats.overdue },
-            { label: "Total Books", value: stats.total },  // fetch /books/all if you want dynamic
-            { label: "Members", value: stats.totalmember },   // likewise if needed
+            { label: "Total Books", value: stats.total },
+            { label: "Members", value: stats.totalmember },
             { label: "Borrows Pending", value: stats.pending },
           ].map((item, i) => (
             <div key={i} className="bg-white rounded shadow p-4 text-center">
@@ -259,102 +236,36 @@ export default function Dashboard() {
           ))}
         </div>
 
-
-
         {/* Graph + Overdue */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* ---------------------- CHECK-OUT STATISTICS (Weekly Line Chart; legend BELOW) ---------------------- */}
+          {/* Chart */}
           <div className="bg-white rounded shadow p-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold mb-2">Check-Out Statistics</h3>
               <span className="text-xs text-gray-500">Updated {hh}:{mm}:{ss}</span>
             </div>
 
-            {/* Chart centered */}
             <div className="w-full flex justify-center">
-              <svg
-                viewBox={`0 0 ${chartBox.w} ${chartBox.h}`}
-                width="100%"
-                height="220"
-                className="max-w-full"
-                aria-label="Weekly Dynamics Line Chart"
-              >
-                {/* grid lines */}
+              <svg viewBox={`0 0 ${chartBox.w} ${chartBox.h}`} width="100%" height="220" className="max-w-full" aria-label="Weekly Dynamics Line Chart">
                 {[0, 0.25, 0.5, 0.75, 1].map((t, i) => {
                   const y = chartBox.padY + t * (chartBox.h - chartBox.padY * 2);
-                  return (
-                    <line
-                      key={i}
-                      x1={chartBox.padX}
-                      x2={chartBox.w - chartBox.padX}
-                      y1={y}
-                      y2={y}
-                      className="stroke-gray-200"
-                      strokeWidth="1"
-                    />
-                  );
+                  return <line key={i} x1={chartBox.padX} x2={chartBox.w - chartBox.padX} y1={y} y2={y} className="stroke-gray-200" strokeWidth="1" />;
                 })}
-
-                {/* baseline */}
-                <line
-                  x1={chartBox.padX}
-                  x2={chartBox.w - chartBox.padX}
-                  y1={chartBox.h - chartBox.padY}
-                  y2={chartBox.h - chartBox.padY}
-                  className="stroke-gray-300"
-                  strokeWidth="1"
-                />
-
-                {/* x labels */}
-                {WEEK_LABELS.map((w, i) => (
-                  <text
-                    key={w}
-                    x={sx(i)}
-                    y={chartBox.h - 6}
-                    textAnchor="middle"
-                    className="fill-gray-400"
-                    style={{ fontSize: 10 }}
-                  >
-                    {w}
-                  </text>
-                ))}
-
-                {/* animated lines + dots */}
+                <line x1={chartBox.padX} x2={chartBox.w - chartBox.padX} y1={chartBox.h - chartBox.padY} y2={chartBox.h - chartBox.padY} className="stroke-gray-300" strokeWidth="1" />
+                {WEEK_LABELS.map((w, i) => <text key={w} x={sx(i)} y={chartBox.h - 6} textAnchor="middle" className="fill-gray-400" style={{ fontSize: 10 }}>{w}</text>)}
                 {paths.map((p, idx) => (
                   <g key={idx}>
-                    <path
-                      ref={(el) => (pathRefs.current[idx] = el)}
-                      d={p.d}
-                      className={`${p.color}`}
-                      fill="none"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    {p.values.map((v, i) => (
-                      <circle
-                        key={i}
-                        cx={sx(i)}
-                        cy={sy(v)}
-                        r="3.4"
-                        className={`${p.dot} stroke-white`}
-                        strokeWidth="1.2"
-                      />
-                    ))}
+                    <path ref={el => pathRefs.current[idx] = el} d={p.d} className={`${p.color}`} fill="none" strokeWidth="3" strokeLinecap="round" />
+                    {p.values.map((v, i) => <circle key={i} cx={sx(i)} cy={sy(v)} r="3.4" className={`${p.dot} stroke-white`} strokeWidth="1.2" />)}
                   </g>
                 ))}
               </svg>
             </div>
 
-            {/* Weekly legend UNDER chart (three horizontal blocks) */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {series.map((s) => (
+              {series.map(s => (
                 <div key={s.name} className="flex items-start gap-3">
-                  <span
-                    className={`mt-2 inline-block w-8 h-1.5 rounded-full ${s.color.replace(
-                      "stroke",
-                      "bg"
-                    )}`}
-                  />
+                  <span className={`mt-2 inline-block w-8 h-1.5 rounded-full ${s.color.replace("stroke", "bg")}`} />
                   <div>
                     <p className="font-semibold text-gray-800">{s.name}</p>
                     <p className="text-[11px] leading-4 text-gray-400">Mon – Sun</p>
@@ -366,8 +277,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ---------------------- Overdue’s History (email centered with icon) ---------------------- */}
-          {/* ---------------------- Overdue’s History (email centered with icon) ---------------------- */}
+          {/* Overdue History */}
           <div className="bg-white rounded shadow p-4">
             <h3 className="font-semibold mb-2">Overdue’s History</h3>
             <table className="w-full text-sm">
@@ -381,41 +291,45 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {overdueRecords.length > 0 ? (
-                  overdueRecords.map((r) => (
-                    <tr key={r.id} className="border-b border-gray-200">
-                      <td>{r.id}</td>
-                      <td className="font-semibold">{r.book}</td>
-                      <td>{r.user}</td>
-                      <td className="text-center">
-                        <span className="inline-flex items-center justify-center gap-1 text-gray-700">
-                          <Mail size={16} className="text-gray-500" />
-                          <span>{r.email}</span>
-                        </span>
-                      </td>
-                      <td>{r.returned}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="py-6 text-center text-gray-500">
-                      No overdue records found.
+                {paginatedOverdue.length > 0 ? paginatedOverdue.map(r => (
+                  <tr key={r.id} className="border-b border-gray-200">
+                    <td>{r.id}</td>
+                    <td className="font-semibold">{r.book}</td>
+                    <td>{r.user}</td>
+                    <td className="text-center">
+                      <span className="inline-flex items-center justify-center gap-1 text-gray-700">
+                        <Mail size={16} className="text-gray-500" />
+                        <span>{r.email}</span>
+                      </span>
                     </td>
+                    <td>{r.returned}</td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-gray-500">No overdue records found.</td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </div>
 
+            {/* Overdue Pagination */}
+            {overdueTotalPages > 1 && (
+              <div className="flex justify-center gap-2 mt-2">
+                <button onClick={() => setOverduePage(p => Math.max(1, p - 1))} className="px-3 py-1 border rounded-md" disabled={overduePage === 1}>Prev</button>
+                {Array.from({ length: overdueTotalPages }, (_, i) => (
+                  <button key={i} onClick={() => setOverduePage(i + 1)} className={`px-3 py-1 border rounded-md ${overduePage === i + 1 ? "bg-sky-600 text-white" : ""}`}>{i + 1}</button>
+                ))}
+                <button onClick={() => setOverduePage(p => Math.min(overdueTotalPages, p + 1))} className="px-3 py-1 border rounded-md" disabled={overduePage === overdueTotalPages}>Next</button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Borrow Request (functional) */}
+        {/* Borrow Requests */}
         <div className="bg-white rounded shadow p-4">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-semibold">Borrow Request</h3>
-            <Link to="#" className="text-xs text-green-600 hover:underline">
-              View All
-            </Link>
+            <Link to="#" className="text-xs text-green-600 hover:underline">View All</Link>
           </div>
           <table className="w-full text-sm">
             <thead>
@@ -429,148 +343,60 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {requests.map((r, i) => (
+              {paginatedRequests.length > 0 ? paginatedRequests.map((r, i) => (
                 <tr key={`${r.book}__${r.user}__${i}`} className="border-b border-gray-200">
-                  <td>{i + 1}</td>
+                  <td>{requestStartIndex + i + 1}</td>
                   <td className="font-medium">{r.book}</td>
                   <td>{r.user}</td>
                   <td>{r.borrowed}</td>
                   <td>{r.returned}</td>
                   <td className="text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openConfirm("accept", i)}
-                        className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-400"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openConfirm("reject", i)}
-                        className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
-                      >
-                        Reject
-                      </button>
+                      <button type="button" onClick={() => openConfirm("accept", requestStartIndex + i)} className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-400">Accept</button>
+                      <button type="button" onClick={() => openConfirm("reject", requestStartIndex + i)} className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-red-300">Reject</button>
                     </div>
                   </td>
                 </tr>
-              ))}
-
-              {requests.length === 0 && (
+              )) : (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-gray-500">
-                    No pending borrow requests.
-                  </td>
+                  <td colSpan={6} className="py-6 text-center text-gray-500">No pending borrow requests.</td>
                 </tr>
               )}
             </tbody>
           </table>
+
+          {/* Borrow Requests Pagination */}
+          {requestTotalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-2">
+              <button onClick={() => setRequestPage(p => Math.max(1, p - 1))} className="px-3 py-1 border rounded-md" disabled={requestPage === 1}>Prev</button>
+              {Array.from({ length: requestTotalPages }, (_, i) => (
+                <button key={i} onClick={() => setRequestPage(i + 1)} className={`px-3 py-1 border rounded-md ${requestPage === i + 1 ? "bg-sky-600 text-white" : ""}`}>{i + 1}</button>
+              ))}
+              <button onClick={() => setRequestPage(p => Math.min(requestTotalPages, p + 1))} className="px-3 py-1 border rounded-md" disabled={requestPage === requestTotalPages}>Next</button>
+            </div>
+          )}
         </div>
+
+        {/* Confirm Modal */}
+        {confirm.open && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded p-6 max-w-sm w-full">
+              <p className="text-gray-800 mb-4">Are you sure you want to {confirm.type} this request?</p>
+              <div className="flex justify-end gap-3">
+                <button onClick={closeConfirm} className="px-3 py-1 rounded border">Cancel</button>
+                <button onClick={doConfirm} className={`px-3 py-1 rounded ${confirm.type === "accept" ? "bg-green-600 text-white" : "bg-red-500 text-white"}`}>Yes</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Toast */}
+        {toast.show && (
+          <div className={`fixed bottom-4 right-4 px-4 py-2 rounded shadow text-white ${toast.type === "accept" ? "bg-green-600" : "bg-red-500"}`}>
+            {toast.message}
+          </div>
+        )}
       </main>
-
-      {/* ---- Confirm Modal (Accept / Reject) ---- */}
-      {confirm.open && (
-        <div
-          className="fixed inset-0 z-50"
-          aria-modal="true"
-          role="dialog"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeConfirm();
-          }}
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 opacity-0 animate-[fadeIn_.2s_ease-out_forwards]" />
-          {/* Panel */}
-          <div className="absolute inset-0 flex items-center justify-center px-4">
-            <div className="w-full max-w-md rounded-lg bg-white shadow-lg border border-gray-200 opacity-0 translate-y-2 animate-[popIn_.22s_ease-out_forwards]">
-              <div className="px-6 py-5">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    {confirm.type === "accept" ? (
-                      <CheckCircle2 className="text-green-600" size={24} />
-                    ) : (
-                      <AlertTriangle className="text-amber-500" size={24} />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      {confirm.type === "accept"
-                        ? "Accept this borrow request?"
-                        : "Reject this borrow request?"}
-                    </h3>
-                    {confirm.index > -1 && (
-                      <p className="mt-1 text-sm text-gray-600">
-                        <span className="font-medium">
-                          {requests[confirm.index]?.book}
-                        </span>{" "}
-                        — {requests[confirm.index]?.user}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-6 py-4 bg-white border-t border-gray-200 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={closeConfirm}
-                  className="rounded-md px-4 py-2 text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={doConfirm}
-                  className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${
-                    confirm.type === "accept"
-                      ? "bg-green-600 hover:bg-green-500 focus:ring-2 focus:ring-green-400"
-                      : "bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-400"
-                  }`}
-                >
-                  {confirm.type === "accept" ? "Confirm" : "Reject"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ---- Toast (2s) ---- */}
-      {toast.show && (
-        <div className="fixed bottom-6 right-6 z-[60] pointer-events-none animate-[toastIn_.25s_ease-out]">
-          <div className="pointer-events-auto flex items-start gap-3 rounded-xl bg-white shadow-lg ring-1 ring-black/5 px-4 py-3">
-            <div className="mt-0.5">
-              {toast.type === "accept" ? (
-                <CheckCircle2 className="text-green-600" size={22} />
-              ) : (
-                <XCircle className="text-red-600" size={22} />
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">
-                {toast.type === "accept" ? "Accepted" : "Rejected"}
-              </p>
-              <p className="text-xs text-gray-600">{toast.message}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* animations */}
-      <style>{`
-        @keyframes fadeIn { to { opacity: 1 } }
-        @keyframes popIn { to { opacity: 1; transform: translateY(0) } }
-        @keyframes toastIn { from { opacity: 0; transform: translateY(8px) scale(.98) } to { opacity: 1; transform: translateY(0) scale(1) } }
-      `}</style>
     </div>
   );
 }
-
-
-
-
-
-
-
-

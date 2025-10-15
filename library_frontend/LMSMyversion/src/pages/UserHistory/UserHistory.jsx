@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Filter, Eye, X } from "lucide-react";
 import UserSidebar from "../../components/UserSidebar/UserSidebar";
 import api from "../../config/api";
+import { useAuth } from "../../Providers/AuthProvider";
 
 const badge = (type) => {
   const base = "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium";
@@ -30,6 +31,7 @@ export default function UserHistory() {
     document.title = "History";
   }, []);
 
+  const { user } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -38,7 +40,12 @@ export default function UserHistory() {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const res = await api.get("/borrow/borrow/my");
+        // Check user role and call appropriate API endpoint
+        const apiEndpoint = user?.role === "admin" 
+          ? "/borrow/borrow"  // Admin gets all borrow records
+          : "/borrow/borrow/my";  // Regular users get only their own records
+        
+        const res = await api.get(apiEndpoint);
         const mapped = (res.data || []).map((b) => ({
           id: `BRW-${b.borrow_id}`,
           borrow_id: b.borrow_id,
@@ -65,7 +72,7 @@ export default function UserHistory() {
       }
     };
     fetchHistory();
-  }, []);
+  }, [user]);
 
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
@@ -76,19 +83,25 @@ export default function UserHistory() {
       let matchesType = true;
       if (typeFilter !== "All") {
         const tf = typeFilter.toLowerCase();
-        if (tf === "borrowed" || tf === "returned") {
-          matchesType = String(r.type || "").toLowerCase() === tf;
+  
+        // Check borrow type first
+        const typeLower = String(r.type || "").toLowerCase();
+        const requestLower = String(r.requestStatus || "").toLowerCase();
+  
+        // Match against type OR requestStatus depending on filter
+        if (["borrowed", "returned", "pdf-borrow"].includes(tf)) {
+          matchesType = typeLower === tf;
         } else {
-          matchesType = String(r.requestStatus || "").toLowerCase() === tf;
+          matchesType = requestLower === tf;
         }
       }
-
+  
       const matchesSearch =
         !term ||
         [r.id, r.book, r.user, r.type, r.requestStatus]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(term));
-
+  
       return matchesType && matchesSearch;
     });
   }, [rows, q, typeFilter]);
@@ -149,7 +162,7 @@ export default function UserHistory() {
                   <Filter size={16} /> Type:
                 </span>
                 <div className="flex items-center gap-2">
-                  {["All", "Borrowed", "Returned", "Pending", "Accepted", "Rejected"].map((t) => (
+                  {["All", "Borrowed", "Returned", "Pending", "Accepted", "Rejected", "Pdf-borrow"].map((t) => (
                     <button
                       key={t}
                       type="button"
@@ -191,8 +204,8 @@ export default function UserHistory() {
                     <th className="py-3 px-4 min-w-[160px]">User</th>
                     <th className="py-3 px-4">Borrowed On</th>
                     <th className="py-3 px-4">Due Date</th>
-                    <th className="py-3 px-4">Returned On</th>
-                    <th className="py-3 px-4">Type</th>
+                    {/* <th className="py-3 px-4">Returned On</th> */}
+                    <th className="py-3 px-4">Borrow Status</th>
                     <th className="py-3 px-4">Request Status</th>
                     <th className="py-3 px-4 text-center">Action</th>
                   </tr>
@@ -205,7 +218,7 @@ export default function UserHistory() {
                       <td className="py-3 px-4 text-gray-700">{r.user}</td>
                       <td className="py-3 px-4 text-gray-700">{r.borrowedOn || "—"}</td>
                       <td className="py-3 px-4 text-gray-700">{r.dueOn || "—"}</td>
-                      <td className="py-3 px-4 text-gray-700">{r.returnedOn || "—"}</td>
+                      {/* <td className="py-3 px-4 text-gray-700">{r.returnedOn || "—"}</td> */}
                       <td className="py-3 px-4"><span className={badge(r.type)}>{r.type}</span></td>
                       <td className="py-3 px-4 text-gray-700">{r.requestStatus || "—"}</td>
                       <td className="py-3 px-4 text-center">
@@ -293,7 +306,7 @@ export default function UserHistory() {
                 <div className="flex justify-between"><span className="text-gray-500">Record ID</span><span className="font-medium">{detail.id}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Book</span><span className="font-medium">{detail.book}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">User</span><span className="font-medium">{detail.user}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Type</span><span className={badge(detail.type)}>{detail.type}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Borrow Status</span><span className={badge(detail.type)}>{detail.type}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Request Status</span><span className="font-medium">{detail.requestStatus}</span></div>
               </div>
               <div className="px-6 py-3 border-t border-gray-200 flex justify-end">

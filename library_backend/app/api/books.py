@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from app.models.book import Book
 from app.crud.book import BookCRUD
-from app.schemas.book import BookPublic, BookDetail, BookCreate, BookUpdate, RateBook, BookDetail2
+from app.schemas.book import BookPublic, BookDetail, BookCreate, BookUpdate, RateBook, BookDetail2, UpdateFeatured
 from app.dependencies import get_db
 #from app.core.security import get_current_user, get_current_admin
 from app.dependencies import get_current_user, get_current_admin
@@ -15,6 +15,7 @@ from app.utils.minio_utils import upload_file
 from typing import Dict
 from sqlalchemy import select, and_, extract
 from datetime import datetime
+from app.models.user import User
 
 
 
@@ -162,6 +163,48 @@ async def get_new_books(
     )
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+
+
+@router.get("/featured", response_model=List[BookDetail2], tags=["Books"], dependencies=[Depends(get_current_user)])
+async def list_featured_books(
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None, description="Search by title, author, or details")
+):
+    skip = (page - 1) * page_size
+    books = await BookCRUD.get_featured_books(db, skip=skip, limit=page_size, search=search)
+    return books
+
+
+
+
+@router.patch("/{book_id}/featured", response_model=BookDetail, tags=["Books"])
+async def update_book_featured(
+    book_id: int,
+    data: UpdateFeatured,  # expects JSON body like {"featured": true}
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    # ✅ Allow only admins to update featured status
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # ✅ Fetch the book
+    book = await db.get(Book, book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    # ✅ Update featured column (true/false)
+    book.featured = data.featured
+
+    db.add(book)
+    await db.commit()
+    await db.refresh(book)
+
+    return book
 
 
 

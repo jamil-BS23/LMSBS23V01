@@ -8,7 +8,7 @@ from app.models.category import Category
 from app.schemas.book import BookCreate, BookUpdate
 from app.models.user_rating import UserRating
 from fastapi import HTTPException, status
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import or_
 from pydantic import HttpUrl
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -318,6 +318,8 @@ class BookCRUD:
         result = await db.execute(query)
         return result.scalars().first() is not None
 
+
+
     @staticmethod
     async def rate_book(db: AsyncSession, book_id: int, user_id: int, rating: float):
         # Fetch book
@@ -359,4 +361,52 @@ class BookCRUD:
         for book, category_title in rows:
             book.category_title = category_title
             books.append(book)
+        return books
+
+
+
+
+
+    @staticmethod
+    async def get_featured_books(
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 20,
+        search: Optional[str] = None
+    ) -> List[Book]:
+        """
+        Return featured books with optional search.
+        """
+        stmt = (
+            select(Book, Category.category_title)
+            .join(Category, Category.category_id == Book.book_category_id)
+            .where(Book.featured == True)  # only featured books
+        )
+
+        if search is not None:
+            search = search.strip()
+            if search == "":
+                search = None
+
+        if search:
+            pattern = f"%{search}%"
+            stmt = stmt.where(
+                or_(
+                    Book.book_title.ilike(pattern),
+                    Book.book_author.ilike(pattern),
+                    Book.book_details.ilike(pattern),
+                )
+            )
+
+        stmt = stmt.offset(skip).limit(limit)
+
+        
+        result = await db.execute(stmt)
+        rows = result.all()
+
+        books = []
+        for book, category_title in rows:
+            book.category_title = category_title
+            books.append(book)
+
         return books
